@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:3001"); // Replace with your server URL
+const socket = io("https://server-0w31.onrender.com"); // Replace with your server URL
 
 const VideoChat: React.FC = () => {
   const { roomId } = useParams<{ roomId: string }>();
