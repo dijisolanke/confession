@@ -143,6 +143,38 @@ const VideoChat = () => {
       }
     };
 
+    socket.on("offer", async ({ offer }) => {
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(offer)
+        );
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+        socket.emit("answer", { answer, to: roomId });
+      }
+    });
+
+    socket.on("answer", async ({ answer }) => {
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(answer)
+        );
+      }
+    });
+
+    socket.on("ice-candidate", async ({ candidate }) => {
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.addIceCandidate(
+          new RTCIceCandidate(candidate)
+        );
+      }
+    });
+
+    socket.on("partnerLeft", () => {
+      alert("Your chat partner has left the room.");
+      navigate("/");
+    });
+
     initWebRTC();
 
     return () => {
