@@ -18,54 +18,90 @@ const VideoChat = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
+    const fetchTURNCredentials = async () => {
+      try {
+        const response = await fetch(
+          `https://confessions.metered.live/api/v1/turn/credentials?apiKey=${
+            process.env.TURN_API_KEY || ""
+          }`
+        );
+        if (!response.ok) {
+          throw new Error("Failed to fetch TURN credentials");
+        }
+        return await response.json();
+      } catch (error) {
+        console.warn(
+          "Failed to fetch TURN credentials, falling back to STUN only:",
+          error
+        );
+        return [{ urls: "stun:stun.l.google.com:19302" }];
+      }
+    };
+
     const initWebRTC = async () => {
       try {
         setIsLoading(true);
-        // First check if media devices are available
+        console.log("Checking media devices..."); // Debug log
+
+        // 1. First check if media devices API is available
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error("Media devices not supported in this browser");
         }
 
+        // 2. Request permissions explicitly first
+        await navigator.mediaDevices
+          .getUserMedia({ audio: true, video: true })
+          .then((stream) => {
+            // Immediately stop the test stream
+            stream.getTracks().forEach((track) => track.stop());
+          })
+          .catch((err) => {
+            throw new Error(`Permission deniedaddy: ${err.message}`);
+          });
+
+        // 3. Enumerate devices after permission is granted
         const devices = await navigator.mediaDevices.enumerateDevices();
+        console.log("Available devices:", devices); // Debug log
+
         const hasVideo = devices.some((device) => device.kind === "videoinput");
         const hasAudio = devices.some((device) => device.kind === "audioinput");
 
-        if (!hasVideo) {
-          throw new Error("No camera detected");
-        }
-        if (!hasAudio) {
-          throw new Error("No microphone detected");
-        }
+        if (!hasVideo) throw new Error("No camera detected");
+        if (!hasAudio) throw new Error("No microphone detected");
 
+        // 4. Get TURN credentials
+        const iceServers = await fetchTURNCredentials();
+        console.log("ICE servers configured:", iceServers); // Debug log
+
+        // 5. Create peer connection with fetched ICE servers
+        peerConnectionRef.current = new RTCPeerConnection({ iceServers });
+
+        // 6. Get media stream
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: "user",
+          },
           audio: true,
         });
 
+        console.log("Stream obtained:", stream.getTracks()); // Debug log
+
+        // 7. Display local stream
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
+          console.log("Local video stream set"); // Debug log
         }
 
-        peerConnectionRef.current = new RTCPeerConnection({
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            ...(process.env.TURN_URL
-              ? [
-                  {
-                    urls: process.env.TURN_URL,
-                    username: process.env.TURN_USERNAME,
-                    credential: process.env.TURN_CREDENTIAL,
-                  },
-                ]
-              : []),
-          ],
-        });
-
+        // 8. Add tracks to peer connection
         stream.getTracks().forEach((track) => {
           peerConnectionRef.current?.addTrack(track, stream);
         });
 
+        // Rest of your WebRTC setup
         peerConnectionRef.current.ontrack = (event) => {
+          console.log("Remote track received:", event); // Debug log
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
           }
@@ -78,6 +114,14 @@ const VideoChat = () => {
               to: roomId,
             });
           }
+        };
+
+        // Debug ice connection state changes
+        peerConnectionRef.current.oniceconnectionstatechange = () => {
+          console.log(
+            "ICE connection state:",
+            peerConnectionRef.current?.iceConnectionState
+          );
         };
 
         if (location.state?.isInitiator) {
@@ -112,42 +156,13 @@ const VideoChat = () => {
     };
   }, [roomId, location.state, navigate]);
 
-  const handleLeave = () => {
-    // Stop all tracks before leaving
-    if (localVideoRef.current?.srcObject instanceof MediaStream) {
-      localVideoRef.current.srcObject
-        .getTracks()
-        .forEach((track) => track.stop());
-    }
-    socket.emit("leaveRoom");
-    navigate("/");
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Initializing video chat...</p>
-      </div>
-    );
-  }
-
-  if (mediaError) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-        <div className="text-red-500">Error: {mediaError}</div>
-        <button
-          onClick={handleLeave}
-          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-        >
-          Return to Home
-        </button>
-      </div>
-    );
-  }
+  // Rest of your component remains the same...
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
       <h1 className="text-xl font-bold">Video Chat with {partnerAlias}</h1>
+      {isLoading && <p>Initializing video chat...</p>}
+      {mediaError && <p className="text-red-500">Error: {mediaError}</p>}
       <div className="flex gap-4">
         <div className="relative">
           <video
@@ -172,7 +187,14 @@ const VideoChat = () => {
         </div>
       </div>
       <button
-        onClick={handleLeave}
+        onClick={() => {
+          if (localVideoRef.current?.srcObject instanceof MediaStream) {
+            localVideoRef.current.srcObject
+              .getTracks()
+              .forEach((track) => track.stop());
+          }
+          navigate("/");
+        }}
         className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
       >
         Leave Chat
