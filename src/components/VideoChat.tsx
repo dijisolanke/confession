@@ -22,9 +22,10 @@ const VideoChat = () => {
       try {
         const response = await fetch(
           `https://confessions.metered.live/api/v1/turn/credentials?apiKey=${
-            process.env.TURN_API_KEY || ""
+            import.meta.env.VITE_TURN_API || ""
           }`
         );
+
         if (!response.ok) {
           throw new Error("Failed to fetch TURN credentials");
         }
@@ -99,7 +100,7 @@ const VideoChat = () => {
           peerConnectionRef.current?.addTrack(track, stream);
         });
 
-        // Rest of your WebRTC setup
+        // Rest of WebRTC setup
         peerConnectionRef.current.ontrack = (event) => {
           console.log("Remote track received:", event); // Debug log
           if (remoteVideoRef.current) {
@@ -143,18 +144,37 @@ const VideoChat = () => {
       }
     };
 
-    socket.on("offer", async ({ offer }) => {
+    socket.on("paired", async ({ partnerAlias, roomId }) => {
+      console.log("Paired with:", partnerAlias, "in room:", roomId);
+
+      // Join the room explicitly
+      socket.emit("joinRoom", { roomId });
+
+      // Then initialize WebRTC
+      await initWebRTC();
+
+      // If we're the initiator, create and send the offer
+      if (location.state?.isInitiator) {
+        const offer = await peerConnectionRef.current?.createOffer();
+        await peerConnectionRef.current?.setLocalDescription(offer);
+        socket.emit("offer", { offer, to: roomId });
+      }
+    });
+
+    socket.on("offer", async ({ offer, from }) => {
+      console.log("Received offer from:", from);
       if (peerConnectionRef.current) {
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(offer)
         );
         const answer = await peerConnectionRef.current.createAnswer();
         await peerConnectionRef.current.setLocalDescription(answer);
-        socket.emit("answer", { answer, to: roomId });
+        socket.emit("answer", { answer, to: from });
       }
     });
 
-    socket.on("answer", async ({ answer }) => {
+    socket.on("answer", async ({ answer, from }) => {
+      console.log("Received answer from:", from);
       if (peerConnectionRef.current) {
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(answer)
@@ -179,6 +199,12 @@ const VideoChat = () => {
 
     return () => {
       // Cleanup: stop all tracks
+      socket.off("paired");
+      socket.off("offer");
+      socket.off("answer");
+      socket.off("ice-candidate");
+      socket.off("partnerLeft");
+
       if (localVideoRef.current?.srcObject instanceof MediaStream) {
         localVideoRef.current.srcObject
           .getTracks()
@@ -187,8 +213,6 @@ const VideoChat = () => {
       peerConnectionRef.current?.close();
     };
   }, [roomId, location.state, navigate]);
-
-  // Rest of your component remains the same...
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
