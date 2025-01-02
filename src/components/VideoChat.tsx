@@ -66,12 +66,16 @@ const VideoChat = () => {
         audio: true,
       });
 
+      console.log("Local stream tracks:", stream.getTracks());
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
       stream.getTracks().forEach((track) => {
         peerConnectionRef.current?.addTrack(track, stream);
+        console.log("Local video stream set");
       });
 
       peerConnectionRef.current.ontrack = (event) => {
+        console.log("Remote track received:", event.streams[0]?.getTracks());
+        console.log("Remote video stream set");
         if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = event.streams[0];
           setIsConnected(true);
@@ -135,6 +139,7 @@ const VideoChat = () => {
     });
 
     socket.on("offer", async ({ offer, from }) => {
+      console.log("Processing offer from:", from);
       if (!peerConnectionRef.current) return;
       try {
         await peerConnectionRef.current.setRemoteDescription(
@@ -149,6 +154,7 @@ const VideoChat = () => {
     });
 
     socket.on("answer", async ({ answer }) => {
+      console.log("Processing answer");
       try {
         await peerConnectionRef.current?.setRemoteDescription(
           new RTCSessionDescription(answer)
