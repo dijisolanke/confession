@@ -16,6 +16,80 @@ const VideoChat = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+
+  const setupMediaStream = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user",
+        },
+        audio: true,
+      });
+      console.log("Media stream obtained:", stream);
+      localStreamRef.current = stream;
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        console.log("Local video stream set.");
+      }
+      return stream;
+    } catch (error) {
+      console.error("Error accessing media devices:", error);
+      throw error;
+    }
+  };
+
+  const createPeerConnection = async (iceServers: RTCIceServer[]) => {
+    try {
+      const pc = new RTCPeerConnection({ iceServers });
+      console.log("RTCPeerConnection created with ice servers:", iceServers);
+
+      // Add local stream tracks to peer connection
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          pc.addTrack(track, localStreamRef.current!);
+          console.log("Added local track to peer connection:", track.kind);
+        });
+      }
+
+      // Handle incoming remote tracks
+      pc.ontrack = (event) => {
+        console.log("Received remote track:", event.track.kind);
+        if (remoteVideoRef.current && event.streams[0]) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          console.log("Set remote video stream:", event.streams[0]);
+        }
+      };
+
+      // Handle ICE candidates
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log("Sending ICE candidate to peer");
+          socket.emit("ice-candidate", {
+            candidate: event.candidate,
+            to: roomId,
+          });
+        }
+      };
+
+      // Log connection state changes
+      pc.oniceconnectionstatechange = () => {
+        console.log("ICE connection state changed to:", pc.iceConnectionState);
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log("Connection state changed to:", pc.connectionState);
+      };
+
+      return pc;
+    } catch (error) {
+      console.error("Error creating peer connection:", error);
+      throw error;
+    }
+  };
 
   useEffect(() => {
     const fetchTURNCredentials = async () => {
@@ -42,134 +116,69 @@ const VideoChat = () => {
       }
     };
 
-    const initWebRTC = async () => {
+    let isComponentMounted = true;
+
+    const initialize = async () => {
       try {
         setIsLoading(true);
-        console.log("Initializing WebRTC...");
+        console.log("Starting initialization...");
 
-        // 1. Check media devices
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("Media devices not supported in this browser");
-        }
-        console.log("Media devices API available.");
+        // Setup local media stream first
+        await setupMediaStream();
 
-        // 2. Request media permissions
-        await navigator.mediaDevices
-          .getUserMedia({ audio: true, video: true })
-          .then((stream) => {
-            console.log("Media permissions granted.");
-            stream.getTracks().forEach((track) => track.stop());
-          })
-          .catch((err) => {
-            console.error("Media permissions denied:", err);
-            throw new Error(`Permission error: ${err.message}`);
-          });
+        // Join the room
+        console.log("Joining room:", roomId);
+        socket.emit("joinRoom", { roomId });
 
-        // 3. Enumerate devices
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        console.log("Devices available:", devices);
-
-        const hasVideo = devices.some((device) => device.kind === "videoinput");
-        const hasAudio = devices.some((device) => device.kind === "audioinput");
-
-        if (!hasVideo) throw new Error("No camera detected");
-        if (!hasAudio) throw new Error("No microphone detected");
-
-        // 4. Fetch TURN credentials
-        const iceServers = await fetchTURNCredentials();
-        console.log("ICE servers configured:", iceServers);
-
-        // 5. Create peer connection
-        peerConnectionRef.current = new RTCPeerConnection({ iceServers });
-        console.log("RTCPeerConnection created.");
-
-        // 6. Get media stream
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "user",
-          },
-          audio: true,
-        });
-        console.log("Media stream obtained:", stream);
-
-        // 7. Set local video
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-          console.log("Local video stream set.");
-        }
-
-        // 8. Add tracks to peer connection
-        stream.getTracks().forEach((track) => {
-          peerConnectionRef.current?.addTrack(track, stream);
-          console.log("Track added to peer connection:", track);
-        });
-
-        // 9. Configure peer connection events
-        peerConnectionRef.current.ontrack = (event) => {
-          console.log("Remote track received:", event);
-          console.log("Remote track received:", event.streams[0]);
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-            console.log("Remote video stream set.");
-          }
-        };
-
-        peerConnectionRef.current.onicecandidate = (event) => {
-          if (event.candidate) {
-            console.log("ICE candidate generated:", event.candidate);
-            socket.emit("ice-candidate", {
-              candidate: event.candidate,
-              to: roomId,
-            });
-          }
-        };
-
-        peerConnectionRef.current.oniceconnectionstatechange = () => {
-          console.log(
-            "ICE connection state:",
-            peerConnectionRef.current?.iceConnectionState
-          );
-        };
-
+        // Only create the peer connection if we're the initiator
         if (location.state?.isInitiator) {
-          console.log("Creating offer...");
+          const iceServers = await fetchTURNCredentials();
+          peerConnectionRef.current = await createPeerConnection(iceServers);
+
+          // Create and send offer
           const offer = await peerConnectionRef.current.createOffer();
           await peerConnectionRef.current.setLocalDescription(offer);
-          console.log("Offer created and sent:", offer);
+          console.log("Sending offer to peer");
           socket.emit("offer", { offer, to: roomId });
         }
 
         setMediaError(null);
       } catch (error) {
-        console.error("WebRTC initialization error:", error);
-        setMediaError(
-          error instanceof Error
-            ? error.message
-            : "Failed to access camera or microphone. Please check your permissions."
-        );
+        console.error("Initialization error:", error);
+        if (isComponentMounted) {
+          setMediaError(
+            error instanceof Error
+              ? error.message
+              : "Failed to initialize video chat"
+          );
+        }
       } finally {
-        setIsLoading(false);
+        if (isComponentMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    socket.on("paired", async ({ partnerAlias, roomId }) => {
-      console.log("Paired with partner:", partnerAlias, "in room:", roomId);
-      socket.emit("joinRoom", { roomId });
-      await initWebRTC();
-    });
+    initialize();
 
+    // Socket event listeners
     socket.on("offer", async ({ offer, from }) => {
       console.log("Received offer from:", from);
-      if (peerConnectionRef.current) {
+      try {
+        if (!peerConnectionRef.current) {
+          const iceServers = await fetchTURNCredentials();
+          peerConnectionRef.current = await createPeerConnection(iceServers);
+        }
+
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(offer)
         );
         const answer = await peerConnectionRef.current.createAnswer();
         await peerConnectionRef.current.setLocalDescription(answer);
-        console.log("Answer created and sent:", answer);
+        console.log("Sending answer to:", from);
         socket.emit("answer", { answer, to: from });
+      } catch (error) {
+        console.error("Error handling offer:", error);
       }
     });
 
@@ -179,46 +188,44 @@ const VideoChat = () => {
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(answer)
         );
-        console.log("Answer set as remote description.");
+        console.log("Set remote description from answer");
       }
     });
 
     socket.on("ice-candidate", async ({ candidate }) => {
-      console.log("Received ICE candidate:", candidate);
+      console.log("Received ICE candidate");
       if (peerConnectionRef.current) {
         await peerConnectionRef.current.addIceCandidate(
           new RTCIceCandidate(candidate)
         );
-        console.log("ICE candidate added.");
+        console.log("Added ICE candidate");
       }
     });
 
-    socket.on("partnerLeft", () => {
-      console.warn("Your chat partner has left the room.");
-      alert("Your chat partner has left the room.");
-      navigate("/");
-    });
-
-    initWebRTC();
-
     return () => {
-      console.log("Cleaning up resources...");
-      socket.off("paired");
+      isComponentMounted = false;
+      console.log("Cleaning up...");
+
+      // Clean up local stream
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          track.stop();
+          console.log("Stopped track:", track.kind);
+        });
+      }
+
+      // Clean up peer connection
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        console.log("Closed peer connection");
+      }
+
+      // Remove socket listeners
       socket.off("offer");
       socket.off("answer");
       socket.off("ice-candidate");
-      socket.off("partnerLeft");
-
-      if (localVideoRef.current?.srcObject instanceof MediaStream) {
-        localVideoRef.current.srcObject.getTracks().forEach((track) => {
-          console.log("Stopping local track:", track);
-          track.stop();
-        });
-      }
-      peerConnectionRef.current?.close();
-      console.log("Peer connection closed.");
     };
-  }, [roomId, location.state, navigate]);
+  }, [roomId, location.state?.isInitiator]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
