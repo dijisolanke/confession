@@ -77,6 +77,16 @@ const VideoChat = () => {
         // 5. Create peer connection with fetched ICE servers
         peerConnectionRef.current = new RTCPeerConnection({ iceServers });
 
+        // Log signaling state changes
+        peerConnectionRef.current.onsignalingstatechange = () => {
+          if (peerConnectionRef.current) {
+            console.log(
+              "Signaling State:",
+              peerConnectionRef.current.signalingState
+            );
+          }
+        };
+
         // 6. Get media stream
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -106,10 +116,12 @@ const VideoChat = () => {
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
           }
+          console.log("Remote video stream set", event.streams[0]); // New log
         };
 
         peerConnectionRef.current.onicecandidate = (event) => {
           if (event.candidate) {
+            console.log("New ICE candidate:", event.candidate);
             socket.emit("ice-candidate", {
               candidate: event.candidate,
               to: roomId,
@@ -125,11 +137,13 @@ const VideoChat = () => {
           );
         };
 
-        if (location.state?.isInitiator) {
-          const offer = await peerConnectionRef.current.createOffer();
-          await peerConnectionRef.current.setLocalDescription(offer);
-          socket.emit("offer", { offer, to: roomId });
-        }
+        // Log ICE gathering state changes
+        peerConnectionRef.current.onicegatheringstatechange = () => {
+          console.log(
+            "ICE Gathering State:",
+            peerConnectionRef.current?.iceGatheringState
+          );
+        };
 
         setMediaError(null);
       } catch (error) {
@@ -155,38 +169,60 @@ const VideoChat = () => {
 
       // If we're the initiator, create and send the offer
       if (location.state?.isInitiator) {
+        console.log("Creating offer as initiator");
         const offer = await peerConnectionRef.current?.createOffer();
+        console.log("Offer created:", offer?.sdp);
         await peerConnectionRef.current?.setLocalDescription(offer);
+        console.log("Local description set (offer)");
         socket.emit("offer", { offer, to: roomId });
+        console.log("Offer sent to room:", roomId);
       }
     });
 
     socket.on("offer", async ({ offer, from }) => {
       console.log("Received offer from:", from);
+      console.log("Offer SDP:", offer.sdp);
       if (peerConnectionRef.current) {
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(offer)
-        );
-        const answer = await peerConnectionRef.current.createAnswer();
-        await peerConnectionRef.current.setLocalDescription(answer);
-        socket.emit("answer", { answer, to: from });
+        try {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(offer)
+          );
+          console.log("Remote description set (offer)");
+          const answer = await peerConnectionRef.current.createAnswer();
+          await peerConnectionRef.current.setLocalDescription(answer);
+          console.log("Local description set (answer)");
+          socket.emit("answer", { answer, to: from });
+        } catch (error) {
+          console.error("Error handling offer:", error);
+        }
       }
     });
 
     socket.on("answer", async ({ answer, from }) => {
       console.log("Received answer from:", from);
+      console.log("Answer SDP:", answer.sdp);
       if (peerConnectionRef.current) {
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(answer)
-        );
+        try {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(answer)
+          );
+          console.log("Remote description set (answer)");
+        } catch (error) {
+          console.error("Error handling answer:", error);
+        }
       }
     });
 
-    socket.on("ice-candidate", async ({ candidate }) => {
+    socket.on("ice-candidate", async ({ candidate, from }) => {
+      console.log("Received ICE candidate from:", from);
       if (peerConnectionRef.current) {
-        await peerConnectionRef.current.addIceCandidate(
-          new RTCIceCandidate(candidate)
-        );
+        try {
+          await peerConnectionRef.current.addIceCandidate(
+            new RTCIceCandidate(candidate)
+          );
+        } catch (error) {
+          console.error("Error adding ICE candidate:", error);
+        }
       }
     });
 
@@ -194,8 +230,6 @@ const VideoChat = () => {
       alert("Your chat partner has left the room.");
       navigate("/");
     });
-
-    initWebRTC();
 
     return () => {
       // Cleanup: stop all tracks
