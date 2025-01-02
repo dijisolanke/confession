@@ -108,6 +108,7 @@ const VideoChat = () => {
 
         // 9. Configure peer connection events
         peerConnectionRef.current.ontrack = (event) => {
+          console.log("Remote track received:", event);
           console.log("Remote track received:", event.streams[0]);
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = event.streams[0];
