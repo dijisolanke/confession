@@ -38,7 +38,7 @@ const VideoChat = () => {
           "Failed to fetch TURN credentials, falling back to STUN only:",
           error
         );
-        return [{ urls: "stun:stun.l.google.com:19302" }];
+        return [{ urls: "stun:stun.relay.metered.ca:80" }];
       }
     };
 
