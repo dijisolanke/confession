@@ -115,7 +115,7 @@ const VideoChat = () => {
 
     let connectionTimeout: NodeJS.Timeout;
 
-    socket.on("paired", async ({ partnerAlias, roomId }) => {
+    socket.on("paired", async ({ roomId }) => {
       console.log("Paired in room:", roomId);
       socket.emit("joinRoom", { roomId });
       await connect();
