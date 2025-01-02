@@ -13,226 +13,168 @@ const VideoChat = () => {
   );
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isConnected, setIsConnected] = useState(false);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
 
-  useEffect(() => {
-    const fetchTURNCredentials = async () => {
-      try {
-        const response = await fetch(
-          `https://confessions.metered.live/api/v1/turn/credentials?apiKey=${
-            import.meta.env.VITE_TURN_API || ""
-          }`
-        );
+  const fetchTURNCredentials = async () => {
+    try {
+      const response = await fetch(
+        `https://confessions.metered.live/api/v1/turn/credentials?apiKey=${
+          import.meta.env.VITE_TURN_API || ""
+        }`
+      );
+      if (!response.ok) throw new Error("Failed to fetch TURN credentials");
+      return await response.json();
+    } catch (error) {
+      console.warn("Falling back to STUN only:", error);
+      return [{ urls: "stun:stun.l.google.com:19302" }];
+    }
+  };
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch TURN credentials");
-        }
-        return await response.json();
-      } catch (error) {
-        console.warn(
-          "Failed to fetch TURN credentials, falling back to STUN only:",
-          error
-        );
-        return [{ urls: "stun:stun.l.google.com:19302" }];
+  const initWebRTC = async () => {
+    try {
+      setIsLoading(true);
+
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Media devices not supported");
       }
-    };
 
-    const initWebRTC = async () => {
-      try {
-        setIsLoading(true);
-        console.log("Checking media devices..."); // Debug log
+      // Test permissions
+      const testStream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: true,
+      });
+      testStream.getTracks().forEach((track) => track.stop());
 
-        // 1. First check if media devices API is available
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error("Media devices not supported in this browser");
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      if (!devices.some((d) => d.kind === "videoinput"))
+        throw new Error("No camera found");
+      if (!devices.some((d) => d.kind === "audioinput"))
+        throw new Error("No microphone found");
+
+      const iceServers = await fetchTURNCredentials();
+      peerConnectionRef.current = new RTCPeerConnection({ iceServers });
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user",
+        },
+        audio: true,
+      });
+
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      stream.getTracks().forEach((track) => {
+        peerConnectionRef.current?.addTrack(track, stream);
+      });
+
+      peerConnectionRef.current.ontrack = (event) => {
+        if (remoteVideoRef.current) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          setIsConnected(true);
         }
+      };
 
-        // 2. Request permissions explicitly first
-        await navigator.mediaDevices
-          .getUserMedia({ audio: true, video: true })
-          .then((stream) => {
-            // Immediately stop the test stream
-            stream.getTracks().forEach((track) => track.stop());
-          })
-          .catch((err) => {
-            throw new Error(`Permission deniedaddy: ${err.message}`);
+      peerConnectionRef.current.onicecandidate = (event) => {
+        if (event.candidate) {
+          socket.emit("ice-candidate", {
+            candidate: event.candidate,
+            to: roomId,
           });
-
-        // 3. Enumerate devices after permission is granted
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        console.log("Available devices:", devices); // Debug log
-
-        const hasVideo = devices.some((device) => device.kind === "videoinput");
-        const hasAudio = devices.some((device) => device.kind === "audioinput");
-
-        if (!hasVideo) throw new Error("No camera detected");
-        if (!hasAudio) throw new Error("No microphone detected");
-
-        // 4. Get TURN credentials
-        const iceServers = await fetchTURNCredentials();
-        console.log("ICE servers configured:", iceServers); // Debug log
-
-        // 5. Create peer connection with fetched ICE servers
-        peerConnectionRef.current = new RTCPeerConnection({ iceServers });
-
-        // Log signaling state changes
-        peerConnectionRef.current.onsignalingstatechange = () => {
-          if (peerConnectionRef.current) {
-            console.log(
-              "Signaling State:",
-              peerConnectionRef.current.signalingState
-            );
-          }
-        };
-
-        // 6. Get media stream
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            facingMode: "user",
-          },
-          audio: true,
-        });
-
-        console.log("Stream obtained:", stream.getTracks()); // Debug log
-
-        // 7. Display local stream
-        if (localVideoRef.current) {
-          localVideoRef.current.srcObject = stream;
-          console.log("Local video stream set"); // Debug log
         }
+      };
 
-        // 8. Add tracks to peer connection
-        stream.getTracks().forEach((track) => {
-          peerConnectionRef.current?.addTrack(track, stream);
-        });
+      peerConnectionRef.current.oniceconnectionstatechange = () => {
+        if (peerConnectionRef.current?.iceConnectionState === "failed") {
+          console.log("Connection failed, attempting restart...");
+          peerConnectionRef.current.restartIce();
+        }
+      };
 
-        // Rest of WebRTC setup
-        peerConnectionRef.current.ontrack = (event) => {
-          console.log("Remote track received:", event); // Debug log
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = event.streams[0];
-          }
-          console.log("Remote video stream set", event.streams[0]); // New log
-        };
+      setMediaError(null);
+      return true;
+    } catch (error) {
+      console.error("WebRTC init failed:", error);
+      setMediaError(
+        error instanceof Error ? error.message : "Media access failed"
+      );
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-        peerConnectionRef.current.onicecandidate = (event) => {
-          if (event.candidate) {
-            console.log("New ICE candidate:", event.candidate);
-            socket.emit("ice-candidate", {
-              candidate: event.candidate,
-              to: roomId,
-            });
-          }
-        };
-
-        // Debug ice connection state changes
-        peerConnectionRef.current.oniceconnectionstatechange = () => {
-          console.log(
-            "ICE connection state:",
-            peerConnectionRef.current?.iceConnectionState
-          );
-        };
-
-        // Log ICE gathering state changes
-        peerConnectionRef.current.onicegatheringstatechange = () => {
-          console.log(
-            "ICE Gathering State:",
-            peerConnectionRef.current?.iceGatheringState
-          );
-        };
-
-        setMediaError(null);
-      } catch (error) {
-        console.error("Failed to initialize WebRTC:", error);
-        setMediaError(
-          error instanceof Error
-            ? error.message
-            : "Failed to access camera or microphone. Please check your permissions."
-        );
-      } finally {
-        setIsLoading(false);
-      }
+  useEffect(() => {
+    const connect = async () => {
+      const success = await initWebRTC();
+      if (success) socket.emit("ready", { roomId });
     };
+
+    let connectionTimeout: NodeJS.Timeout;
 
     socket.on("paired", async ({ partnerAlias, roomId }) => {
-      console.log("Paired with:", partnerAlias, "in room:", roomId);
-
-      // Join the room explicitly
+      console.log("Paired in room:", roomId);
       socket.emit("joinRoom", { roomId });
+      await connect();
 
-      // Then initialize WebRTC
-      await initWebRTC();
+      connectionTimeout = setTimeout(() => {
+        if (!isConnected) {
+          setMediaError("Connection timeout - please try again");
+          navigate("/");
+        }
+      }, 30000);
 
-      // If we're the initiator, create and send the offer
       if (location.state?.isInitiator) {
-        console.log("Creating offer as initiator");
         const offer = await peerConnectionRef.current?.createOffer();
-        console.log("Offer created:", offer?.sdp);
         await peerConnectionRef.current?.setLocalDescription(offer);
-        console.log("Local description set (offer)");
         socket.emit("offer", { offer, to: roomId });
-        console.log("Offer sent to room:", roomId);
       }
     });
 
     socket.on("offer", async ({ offer, from }) => {
-      console.log("Received offer from:", from);
-      console.log("Offer SDP:", offer.sdp);
-      if (peerConnectionRef.current) {
-        try {
-          await peerConnectionRef.current.setRemoteDescription(
-            new RTCSessionDescription(offer)
-          );
-          console.log("Remote description set (offer)");
-          const answer = await peerConnectionRef.current.createAnswer();
-          await peerConnectionRef.current.setLocalDescription(answer);
-          console.log("Local description set (answer)");
-          socket.emit("answer", { answer, to: from });
-        } catch (error) {
-          console.error("Error handling offer:", error);
-        }
+      if (!peerConnectionRef.current) return;
+      try {
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(offer)
+        );
+        const answer = await peerConnectionRef.current.createAnswer();
+        await peerConnectionRef.current.setLocalDescription(answer);
+        socket.emit("answer", { answer, to: from });
+      } catch (error) {
+        console.error("Offer handling failed:", error);
       }
     });
 
-    socket.on("answer", async ({ answer, from }) => {
-      console.log("Received answer from:", from);
-      console.log("Answer SDP:", answer.sdp);
-      if (peerConnectionRef.current) {
-        try {
-          await peerConnectionRef.current.setRemoteDescription(
-            new RTCSessionDescription(answer)
-          );
-          console.log("Remote description set (answer)");
-        } catch (error) {
-          console.error("Error handling answer:", error);
-        }
+    socket.on("answer", async ({ answer }) => {
+      try {
+        await peerConnectionRef.current?.setRemoteDescription(
+          new RTCSessionDescription(answer)
+        );
+      } catch (error) {
+        console.error("Answer handling failed:", error);
       }
     });
 
-    socket.on("ice-candidate", async ({ candidate, from }) => {
-      console.log("Received ICE candidate from:", from);
-      if (peerConnectionRef.current) {
-        try {
-          await peerConnectionRef.current.addIceCandidate(
-            new RTCIceCandidate(candidate)
-          );
-        } catch (error) {
-          console.error("Error adding ICE candidate:", error);
-        }
+    socket.on("ice-candidate", async ({ candidate }) => {
+      try {
+        await peerConnectionRef.current?.addIceCandidate(
+          new RTCIceCandidate(candidate)
+        );
+      } catch (error) {
+        console.error("ICE candidate failed:", error);
       }
     });
 
     socket.on("partnerLeft", () => {
-      alert("Your chat partner has left the room.");
+      alert("Your chat partner has left");
       navigate("/");
     });
 
     return () => {
-      // Cleanup: stop all tracks
+      clearTimeout(connectionTimeout);
       socket.off("paired");
       socket.off("offer");
       socket.off("answer");
@@ -245,9 +187,9 @@ const VideoChat = () => {
           .forEach((track) => track.stop());
       }
       peerConnectionRef.current?.close();
+      socket.disconnect();
     };
-  }, [roomId, location.state, navigate]);
-
+  }, [roomId, location.state, navigate, isConnected]);
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
       <h1 className="text-xl font-bold">Video Chat with {partnerAlias}</h1>
