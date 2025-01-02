@@ -42,7 +42,7 @@ const VideoChat = () => {
     const initWebRTC = async () => {
       try {
         setIsLoading(true);
-        console.log("Checking media devices..."); // Debug log
+        console.log("Checking media devices... "); // Debug log
 
         // 1. First check if media devices API is available
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
