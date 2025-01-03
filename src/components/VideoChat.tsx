@@ -84,6 +84,10 @@ const VideoChat = () => {
         console.log("Connection state changed to:", pc.connectionState);
       };
 
+      pc.onnegotiationneeded = () => {
+        console.log("Negotiation needed");
+      };
+
       return pc;
     } catch (error) {
       console.error("Error creating peer connection:", error);
@@ -94,28 +98,54 @@ const VideoChat = () => {
   useEffect(() => {
     let isComponentMounted = true;
 
+    const handleLeaveRoom = () => {
+      if (peerConnectionRef.current) {
+        socket.emit("leaveRoom");
+        peerConnectionRef.current.close();
+      }
+    };
+
+    console.log("VideoChat mounted with:", {
+      roomId,
+      isInitiator: location.state?.isInitiator,
+      partnerAlias,
+    });
+
     socket.emit("requestTurnCredentials");
+    console.log("Requested TURN credentials");
 
     socket.on("turnCredentials", async (credentials) => {
       if (!isComponentMounted) return;
 
       try {
+        console.log("Got TURN credentials");
         setIsLoading(true);
+
         //setup mediaStream
-        await setupMediaStream();
+        const stream = await setupMediaStream();
+        console.log("Media stream obtained:", {
+          videoTracks: stream.getVideoTracks().length,
+          audioTracks: stream.getAudioTracks().length,
+        });
+
         const pc = await createPeerConnection(credentials);
         peerConnectionRef.current = pc;
+        console.log("Created peer connection");
 
         socket.emit("joinRoom", { roomId });
+        console.log("Joined room:", roomId);
 
         if (location.state?.isInitiator) {
           const offer = await pc.createOffer();
           await pc.setLocalDescription(offer);
           socket.emit("offer", { offer, to: roomId });
+          console.log("Offer sent to room:", roomId);
+        } else {
+          console.log("Waiting for offer as non-initiator");
         }
 
         socket.on("offer", async ({ offer, from }) => {
-          console.log("Received offer from:", from);
+          console.log("Creating answer to Received offer from:", from);
           await pc.setRemoteDescription(new RTCSessionDescription(offer));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
@@ -132,6 +162,13 @@ const VideoChat = () => {
           console.log("Received ICE candidate");
           await pc.addIceCandidate(new RTCIceCandidate(candidate));
           setIsLoading(false); //might remove
+        });
+
+        socket.on("partnerLeft", () => {
+          console.log("Partner left the room");
+          if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+          }
         });
       } catch (error) {
         console.error("Setup failed:", error);
@@ -158,6 +195,8 @@ const VideoChat = () => {
       }
 
       // Remove socket listeners
+      handleLeaveRoom();
+      socket.off("partnerLeft");
       socket.off("turnCredentials");
       socket.off("offer");
       socket.off("answer");

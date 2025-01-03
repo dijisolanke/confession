@@ -14,8 +14,8 @@ const Lobby: React.FC = () => {
       setWaitingUsers(users);
     });
 
-    socket.on("paired", ({ partnerAlias, roomId }) => {
-      navigate(`/chat/${roomId}`, { state: { partnerAlias } });
+    socket.on("paired", ({ partnerAlias, roomId, isInitiator }) => {
+      navigate(`/chat/${roomId}`, { state: { partnerAlias, isInitiator } });
     });
 
     return () => {
