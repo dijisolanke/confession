@@ -18,6 +18,30 @@ const VideoChat = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
 
+  const fetchTURNCredentials = async () => {
+    try {
+      console.log("Fetching TURN credentials...");
+      const response = await fetch(
+        `https://confessions.metered.live/api/v1/turn/credentials?apiKey=${
+          import.meta.env.VITE_TURN_API || ""
+        }`
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch TURN credentials");
+      }
+      const credentials = await response.json();
+      console.log("TURN credentials obtained:", credentials);
+      return credentials;
+    } catch (error) {
+      console.warn(
+        "Failed to fetch TURN credentials, falling back to STUN only:",
+        error
+      );
+      return [{ urls: "stun:stun.relay.metered.ca:80" }];
+    }
+  };
+
   const setupMediaStream = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -92,30 +116,6 @@ const VideoChat = () => {
   };
 
   useEffect(() => {
-    const fetchTURNCredentials = async () => {
-      try {
-        console.log("Fetching TURN credentials...");
-        const response = await fetch(
-          `https://confessions.metered.live/api/v1/turn/credentials?apiKey=${
-            import.meta.env.VITE_TURN_API || ""
-          }`
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch TURN credentials");
-        }
-        const credentials = await response.json();
-        console.log("TURN credentials obtained:", credentials);
-        return credentials;
-      } catch (error) {
-        console.warn(
-          "Failed to fetch TURN credentials, falling back to STUN only:",
-          error
-        );
-        return [{ urls: "stun:stun.relay.metered.ca:80" }];
-      }
-    };
-
     let isComponentMounted = true;
 
     const initialize = async () => {
