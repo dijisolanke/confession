@@ -18,30 +18,6 @@ const VideoChat = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
 
-  const fetchTURNCredentials = async () => {
-    try {
-      console.log("Fetching TURN credentials...");
-      const response = await fetch(
-        `https://confessions.metered.live/api/v1/turn/credentials?apiKey=${
-          import.meta.env.VITE_TURN_API || ""
-        }`
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch TURN credentials");
-      }
-      const credentials = await response.json();
-      console.log("TURN credentials obtained:", credentials);
-      return credentials;
-    } catch (error) {
-      console.warn(
-        "Failed to fetch TURN credentials, falling back to STUN only:",
-        error
-      );
-      return [{ urls: "stun:stun.relay.metered.ca:80" }];
-    }
-  };
-
   const setupMediaStream = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -118,87 +94,48 @@ const VideoChat = () => {
   useEffect(() => {
     let isComponentMounted = true;
 
-    const initialize = async () => {
+    socket.emit("requestTurnCredentials");
+
+    socket.on("turnCredentials", async (credentials) => {
+      if (!isComponentMounted) return;
+
       try {
         setIsLoading(true);
-        console.log("Starting initialization...");
-
-        // Setup local media stream first
+        //setup mediaStream
         await setupMediaStream();
+        const pc = await createPeerConnection(credentials);
+        peerConnectionRef.current = pc;
 
-        // Join the room
-        console.log("Joining room:", roomId);
         socket.emit("joinRoom", { roomId });
 
-        // Only create the peer connection if we're the initiator
         if (location.state?.isInitiator) {
-          const iceServers = await fetchTURNCredentials();
-          peerConnectionRef.current = await createPeerConnection(iceServers);
-
-          // Create and send offer
-          const offer = await peerConnectionRef.current.createOffer();
-          await peerConnectionRef.current.setLocalDescription(offer);
-          console.log("Sending offer to peer");
+          const offer = await pc.createOffer();
+          await pc.setLocalDescription(offer);
           socket.emit("offer", { offer, to: roomId });
         }
 
-        setMediaError(null);
+        socket.on("offer", async ({ offer, from }) => {
+          console.log("Received offer from:", from);
+          await pc.setRemoteDescription(new RTCSessionDescription(offer));
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+          console.log("Sending answer to:", from);
+          socket.emit("answer", { answer, to: from });
+        });
+
+        socket.on("answer", async ({ answer, from }) => {
+          console.log("Received answer from:", from);
+          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        });
+
+        socket.on("ice-candidate", async ({ candidate }) => {
+          console.log("Received ICE candidate");
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          setIsLoading(false); //might remove
+        });
       } catch (error) {
-        console.error("Initialization error:", error);
-        if (isComponentMounted) {
-          setMediaError(
-            error instanceof Error
-              ? error.message
-              : "Failed to initialize video chat"
-          );
-        }
-      } finally {
-        if (isComponentMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    initialize();
-
-    // Socket event listeners
-    socket.on("offer", async ({ offer, from }) => {
-      console.log("Received offer from:", from);
-      try {
-        if (!peerConnectionRef.current) {
-          const iceServers = await fetchTURNCredentials();
-          peerConnectionRef.current = await createPeerConnection(iceServers);
-        }
-
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(offer)
-        );
-        const answer = await peerConnectionRef.current.createAnswer();
-        await peerConnectionRef.current.setLocalDescription(answer);
-        console.log("Sending answer to:", from);
-        socket.emit("answer", { answer, to: from });
-      } catch (error) {
-        console.error("Error handling offer:", error);
-      }
-    });
-
-    socket.on("answer", async ({ answer, from }) => {
-      console.log("Received answer from:", from);
-      if (peerConnectionRef.current) {
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(answer)
-        );
-        console.log("Set remote description from answer");
-      }
-    });
-
-    socket.on("ice-candidate", async ({ candidate }) => {
-      console.log("Received ICE candidate");
-      if (peerConnectionRef.current) {
-        await peerConnectionRef.current.addIceCandidate(
-          new RTCIceCandidate(candidate)
-        );
-        console.log("Added ICE candidate");
+        console.error("Setup failed:", error);
+        setMediaError(error instanceof Error ? error.message : "Setup failed");
       }
     });
 
@@ -221,6 +158,7 @@ const VideoChat = () => {
       }
 
       // Remove socket listeners
+      socket.off("turnCredentials");
       socket.off("offer");
       socket.off("answer");
       socket.off("ice-candidate");
