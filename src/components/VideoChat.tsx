@@ -17,6 +17,9 @@ const VideoChat = () => {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const makingOffer = useRef(false);
+  const ignoreOffer = useRef(false);
+  const polite = useRef(location.state?.isInitiator === false); // non-initiator is polite
 
   const setupMediaStream = async () => {
     try {
@@ -55,15 +58,6 @@ const VideoChat = () => {
         });
       }
 
-      // Handle incoming remote tracks
-      pc.ontrack = (event) => {
-        console.log("Received remote track:", event.track.kind);
-        if (remoteVideoRef.current && event.streams[0]) {
-          remoteVideoRef.current.srcObject = event.streams[0];
-          console.log("Set remote video stream:", event.streams[0]);
-        }
-      };
-
       // Handle ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
@@ -72,6 +66,15 @@ const VideoChat = () => {
             candidate: event.candidate,
             to: roomId,
           });
+        }
+      };
+
+      // Handle incoming remote tracks
+      pc.ontrack = (event) => {
+        console.log("Received remote track:", event.track.kind);
+        if (remoteVideoRef.current && event.streams[0]) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          console.log("Set remote video stream:", event.streams[0]);
         }
       };
 
@@ -84,8 +87,19 @@ const VideoChat = () => {
         console.log("Connection state changed to:", pc.connectionState);
       };
 
-      pc.onnegotiationneeded = () => {
-        console.log("Negotiation needed");
+      pc.onnegotiationneeded = async () => {
+        try {
+          makingOffer.current = true;
+          await pc.setLocalDescription();
+          socket.emit("offer", {
+            offer: pc.localDescription,
+            to: roomId,
+          });
+        } catch (err) {
+          console.error(err);
+        } finally {
+          makingOffer.current = false;
+        }
       };
 
       return pc;
@@ -135,27 +149,39 @@ const VideoChat = () => {
         socket.emit("joinRoom", { roomId });
         console.log("Joined room:", roomId);
 
-        if (location.state?.isInitiator) {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          socket.emit("offer", { offer, to: roomId });
-          console.log("Offer sent to room:", roomId);
-        } else {
-          console.log("Waiting for offer as non-initiator");
-        }
-
-        socket.on("offer", async ({ offer, from }) => {
-          console.log("Creating answer to Received offer from:", from);
-          await pc.setRemoteDescription(new RTCSessionDescription(offer));
-          const answer = await pc.createAnswer();
-          await pc.setLocalDescription(answer);
-          console.log("Sending answer to:", from);
-          socket.emit("answer", { answer, to: from });
+        stream.getTracks().forEach((track) => {
+          pc.addTrack(track, stream);
         });
 
-        socket.on("answer", async ({ answer, from }) => {
-          console.log("Received answer from:", from);
-          await pc.setRemoteDescription(new RTCSessionDescription(answer));
+        socket.on("offer", async ({ offer, from }) => {
+          if (!peerConnectionRef.current) return;
+          const pc = peerConnectionRef.current;
+
+          try {
+            const offerCollision =
+              makingOffer.current || pc.signalingState !== "stable";
+
+            ignoreOffer.current = !polite.current && offerCollision;
+            if (ignoreOffer.current) {
+              console.log("Ignoring collision offer");
+              return;
+            }
+
+            await Promise.all([
+              pc.setRemoteDescription(offer),
+              pc.signalingState !== "stable" && pc.setLocalDescription(),
+            ]);
+
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            socket.emit("answer", {
+              answer: pc.localDescription,
+              to: from,
+            });
+          } catch (err) {
+            console.error("Error handling offer:", err);
+          }
         });
 
         socket.on("ice-candidate", async ({ candidate }) => {
@@ -169,6 +195,7 @@ const VideoChat = () => {
           if (peerConnectionRef.current) {
             peerConnectionRef.current.close();
           }
+          navigate("/");
         });
       } catch (error) {
         console.error("Setup failed:", error);
@@ -212,6 +239,7 @@ const VideoChat = () => {
       <div className="flex gap-4">
         <div className="relative">
           <video
+            controls
             ref={localVideoRef}
             autoPlay
             muted
@@ -222,6 +250,7 @@ const VideoChat = () => {
         </div>
         <div className="relative">
           <video
+            controls
             ref={remoteVideoRef}
             autoPlay
             playsInline
@@ -239,6 +268,7 @@ const VideoChat = () => {
               .getTracks()
               .forEach((track) => track.stop());
           }
+          socket.emit("leaveRoom"); // Add this line
           navigate("/");
         }}
         className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
