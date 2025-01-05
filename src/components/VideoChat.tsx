@@ -157,31 +157,30 @@ const VideoChat = () => {
           if (!peerConnectionRef.current) return;
           const pc = peerConnectionRef.current;
 
-          try {
-            const offerCollision =
-              makingOffer.current || pc.signalingState !== "stable";
+          const offerCollision =
+            makingOffer.current || pc.signalingState !== "stable";
 
-            ignoreOffer.current = !polite.current && offerCollision;
-            if (ignoreOffer.current) {
+          if (offerCollision) {
+            if (!polite.current) {
+              ignoreOffer.current = true;
               console.log("Ignoring collision offer");
               return;
             }
-
             await Promise.all([
+              pc.setLocalDescription({ type: "rollback" }), // Rollback to stable state
               pc.setRemoteDescription(offer),
-              pc.signalingState !== "stable" && pc.setLocalDescription(),
             ]);
-
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-
-            socket.emit("answer", {
-              answer: pc.localDescription,
-              to: from,
-            });
-          } catch (err) {
-            console.error("Error handling offer:", err);
+          } else {
+            await pc.setRemoteDescription(offer);
           }
+
+          const answer = await pc.createAnswer();
+          await pc.setLocalDescription(answer);
+
+          socket.emit("answer", {
+            answer: pc.localDescription,
+            to: from,
+          });
         });
 
         socket.on("ice-candidate", async ({ candidate }) => {
@@ -228,6 +227,7 @@ const VideoChat = () => {
       socket.off("offer");
       socket.off("answer");
       socket.off("ice-candidate");
+      socket.disconnect(); // Properly disconnect socket
     };
   }, [roomId, location.state?.isInitiator]);
 
