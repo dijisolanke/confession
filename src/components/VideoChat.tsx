@@ -211,12 +211,14 @@ const VideoChat = () => {
         localStreamRef.current.getTracks().forEach((track) => {
           track.stop();
           console.log("Stopped track:", track.kind);
+          localStreamRef.current = null;
         });
       }
 
       // Clean up peer connection
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
         console.log("Closed peer connection");
       }
 
