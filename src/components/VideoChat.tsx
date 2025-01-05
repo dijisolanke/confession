@@ -149,10 +149,6 @@ const VideoChat = () => {
         socket.emit("joinRoom", { roomId });
         console.log("Joined room:", roomId);
 
-        stream.getTracks().forEach((track) => {
-          pc.addTrack(track, stream);
-        });
-
         socket.on("offer", async ({ offer, from }) => {
           if (!peerConnectionRef.current) return;
           const pc = peerConnectionRef.current;
@@ -181,6 +177,16 @@ const VideoChat = () => {
             answer: pc.localDescription,
             to: from,
           });
+        });
+
+        socket.on("answer", async ({ answer, from }) => {
+          console.log("Received answer from:", from);
+          if (peerConnectionRef.current) {
+            await peerConnectionRef.current.setRemoteDescription(
+              new RTCSessionDescription(answer)
+            );
+            console.log("Set remote description from answer");
+          }
         });
 
         socket.on("ice-candidate", async ({ candidate }) => {
