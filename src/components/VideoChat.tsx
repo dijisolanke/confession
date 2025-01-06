@@ -34,6 +34,8 @@ const VideoChat = () => {
           roomId: roomId!,
           peerConnectionRef,
           localStreamRef,
+          localVideoRef,
+          remoteVideoRef,
           onStateChange: setConnectionState,
           onError: setMediaError,
           onLoading: setIsLoading,

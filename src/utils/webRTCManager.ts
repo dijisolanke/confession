@@ -14,6 +14,8 @@ interface SetupCallParams {
   roomId: string;
   peerConnectionRef: MutableRefObject<RTCPeerConnection | null>;
   localStreamRef: MutableRefObject<MediaStream | null>;
+  localVideoRef: React.RefObject<HTMLVideoElement>;   // Add these
+  remoteVideoRef: React.RefObject<HTMLVideoElement>;  // two lines
   onStateChange?: (state: string) => void;
   onError?: (error: string) => void;
   onLoading?: (loading: boolean) => void;
@@ -95,6 +97,8 @@ class WebRTCManager {
     roomId,
     peerConnectionRef,
     localStreamRef,
+    localVideoRef,
+    remoteVideoRef,
     onStateChange = () => {},
     onError = () => {},
     onLoading = () => {},
@@ -163,6 +167,8 @@ class WebRTCManager {
           roomId,
           peerConnectionRef,
           localStreamRef,
+          localVideoRef,
+          remoteVideoRef,
           onStateChange,
           onError,
           onLoading,
