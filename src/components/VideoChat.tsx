@@ -1,15 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
-import WebRTCManager from "../utils/webRTCManager";
 
 const socket = io("https://server-0w31.onrender.com");
-
-const webRTCManager = new WebRTCManager({
-  maxRetries: 3,
-  retryDelay: 2000,
-  connectionTimeout: 10000,
-});
 
 const VideoChat = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -25,40 +18,282 @@ const VideoChat = () => {
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const makingOffer = useRef(false);
+  const ignoreOffer = useRef(false);
+  const polite = useRef(location.state?.isInitiator === false); // non-initiator is polite
 
-  useEffect(() => {
-    const setupCall = async () => {
-      try {
-        await webRTCManager.setupCallWithRetry({
-          socket,
-          roomId: roomId!,
-          peerConnectionRef,
-          localStreamRef,
-          localVideoRef,
-          remoteVideoRef,
-          onStateChange: setConnectionState,
-          onError: setMediaError,
-          onLoading: setIsLoading,
+  const setupMediaStream = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user",
+        },
+        audio: true,
+      });
+      console.log("Media stream obtained:", {
+        videoTracks: stream.getVideoTracks().length,
+        audioTracks: stream.getAudioTracks().length,
+      });
+      localStreamRef.current = stream;
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+        console.log("Local video stream set.");
+      }
+      return stream;
+    } catch (error) {
+      console.error("Error accessing media devices:", error);
+      throw error;
+    }
+  };
+
+  const createPeerConnection = async (iceServers: RTCIceServer[]) => {
+    try {
+      const pc = new RTCPeerConnection({ iceServers });
+      console.log("RTCPeerConnection created with ice servers:", iceServers);
+
+      // Add local stream tracks to peer connection
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          pc.addTrack(track, localStreamRef.current!);
+          console.log("Added local track to peer connection:", {
+            kind: track.kind,
+            enabled: track.enabled,
+            id: track.id,
+          });
         });
+      }
 
-        // Set local video stream
-        if (localVideoRef.current && localStreamRef.current) {
-          localVideoRef.current.srcObject = localStreamRef.current;
+      // Handle ICE candidates
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log("Sending ICE candidate to peer");
+          socket.emit("ice-candidate", {
+            candidate: event.candidate,
+            to: roomId,
+          });
         }
-      } catch (error) {
-        console.error("Call setup failed:", error);
-        setMediaError("Failed to establish connection");
+      };
+
+      // Log connection state changes
+      pc.oniceconnectionstatechange = () => {
+        console.log("ICE connection state:", pc.iceConnectionState);
+        if (pc.iceConnectionState === "disconnected") {
+          console.log("ICE connection disconnected, attempting restart...");
+          pc.restartIce();
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log("Connection state changed:", pc.connectionState);
+        setConnectionState(pc.connectionState);
+
+        if (pc.connectionState === "failed") {
+          console.log("Connection failed, closing peer connection...");
+          pc.close();
+          setupCall(); // Attempt to restart the call
+        }
+      };
+
+      // Handle incoming remote tracks
+      pc.ontrack = (event) => {
+        console.log("Received remote track:", {
+          kind: event.track.kind,
+          enabled: event.track.enabled,
+          id: event.track.id,
+        });
+        if (remoteVideoRef.current && event.streams[0]) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          console.log("Set remote video stream:", {
+            streamId: event.streams[0].id,
+            tracks: event.streams[0].getTracks().length,
+          });
+        }
+      };
+
+      pc.onnegotiationneeded = async () => {
+        try {
+          makingOffer.current = true;
+          console.log("Negotiation needed, creating offer...");
+          await pc.setLocalDescription();
+          socket.emit("offer", {
+            offer: pc.localDescription,
+            to: roomId,
+          });
+        } catch (err) {
+          console.error(err);
+        } finally {
+          makingOffer.current = false;
+        }
+      };
+
+      return pc;
+    } catch (error) {
+      console.error("Error creating peer connection:", error);
+      throw error;
+    }
+  };
+
+  const setupCall = async () => {
+    console.log("Setting up new call...");
+    socket.emit("requestTurnCredentials");
+  };
+  useEffect(() => {
+    let isComponentMounted = true;
+
+    const handleLeaveRoom = () => {
+      if (peerConnectionRef.current) {
+        socket.emit("leaveRoom");
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+        console.log("Closed peer connection");
       }
     };
+
+    console.log("VideoChat mounted with:", {
+      roomId,
+      isInitiator: location.state?.isInitiator,
+      partnerAlias,
+    });
+
+    socket.emit("requestTurnCredentials");
+    console.log("Requested TURN credentials");
+
+    socket.on("turnCredentials", async (credentials) => {
+      if (!isComponentMounted) {
+        console.log("Component unmounted, ignoring TURN credentials");
+        return;
+      }
+
+      try {
+        console.log("Received TURN credentials, beginning setup...");
+        setIsLoading(true);
+
+        //setup mediaStream
+        const stream = await setupMediaStream();
+        console.log("Media stream obtained:", {
+          videoTracks: stream.getVideoTracks().length,
+          audioTracks: stream.getAudioTracks().length,
+        });
+
+        const pc = await createPeerConnection(credentials);
+        peerConnectionRef.current = pc;
+        console.log("Created peer connection");
+
+        socket.emit("joinRoom", { roomId });
+        console.log("Joined room:", roomId);
+
+        socket.on("offer", async ({ offer, from }) => {
+          if (!peerConnectionRef.current) return;
+          console.log("Received offer from peer:", offer.type);
+
+          const pc = peerConnectionRef.current;
+          const offerCollision =
+            makingOffer.current || pc.signalingState !== "stable";
+
+          ignoreOffer.current = !polite.current && offerCollision;
+          if (ignoreOffer.current) {
+            console.log("Ignoring colliding offer (impolite peer)");
+            return;
+          }
+
+          try {
+            if (offerCollision) {
+              console.log("Handling offer collision...");
+              await Promise.all([
+                pc.setLocalDescription({ type: "rollback" }),
+                pc.setRemoteDescription(offer),
+              ]);
+            } else {
+              await pc.setRemoteDescription(offer);
+            }
+
+            console.log("Creating answer...");
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            console.log("Sending answer to peer");
+            socket.emit("answer", {
+              answer: pc.localDescription,
+              to: from,
+            });
+          } catch (err) {
+            console.error("Error handling offer:", err);
+          }
+
+          // const answer = await pc.createAnswer();
+          // await pc.setLocalDescription(answer);
+
+          // socket.emit("answer", {
+          //   answer: pc.localDescription,
+          //   to: from,
+          // });
+        });
+
+        socket.on("answer", async ({ answer, from }) => {
+          console.log("Received answer from:", from);
+          if (peerConnectionRef.current) {
+            await peerConnectionRef.current.setRemoteDescription(
+              new RTCSessionDescription(answer)
+            );
+            console.log("Set remote description from answer");
+            setIsLoading(false); //might remove
+          }
+        });
+
+        socket.on("ice-candidate", async ({ candidate }) => {
+          try {
+            if (!peerConnectionRef.current) return;
+            console.log("Received ICE candidate:", candidate.candidate);
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(candidate)
+            );
+            console.log("Successfully added ICE candidate");
+          } catch (err) {
+            console.error("Error adding ICE candidate:", err);
+          }
+        });
+
+        socket.on("partnerLeft", () => {
+          console.log("Partner left the room");
+          if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+          }
+          navigate("/");
+        });
+      } catch (error) {
+        console.error("Setup failed:", error);
+        setMediaError(error instanceof Error ? error.message : "Setup failed");
+      }
+    });
 
     setupCall();
 
     return () => {
-      webRTCManager.cleanup(peerConnectionRef, localStreamRef);
-      socket.emit("leaveRoom");
-      socket.disconnect();
+      isComponentMounted = false;
+      console.log("Cleaning up...");
+
+      // Clean up local stream
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          track.stop();
+          console.log("Stopped track:", track.kind);
+          localStreamRef.current = null;
+        });
+      }
+
+      // Remove socket listeners
+      handleLeaveRoom();
+      socket.off("partnerLeft");
+      socket.off("turnCredentials");
+      socket.off("offer");
+      socket.off("answer");
+      socket.off("ice-candidate");
+      socket.disconnect(); // Properly disconnect socket
     };
-  }, [roomId]); //might remove partnerAlias.. might add location.state?.isInitiator, navigate, partnerAlias
+  }, [roomId, location.state?.isInitiator, navigate, partnerAlias]); //might remove partnerAlias
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
