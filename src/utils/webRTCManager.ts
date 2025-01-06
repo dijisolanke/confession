@@ -107,15 +107,34 @@ class WebRTCManager {
       console.log(`Attempting call setup (attempt ${retryCount + 1}/${this.maxRetries})`);
       onLoading(true);
 
+      socket.on("connect_error", (error) => {
+        console.error("Socket connection error:", error);
+        onError("Socket connection failed");
+      });
+
+      socket.on("error", (error) => {
+        console.error("Socket error:", error);
+        onError("Socket error occurred");
+      });
+
       // Clean up existing connection
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
       }
 
+      if (!socket.connected) {
+        console.log("Socket not connected, attempting to connect...");
+        socket.connect();
+      }
+
       // Setup media stream
       const stream = await this.setupMediaStream();
       localStreamRef.current = stream;
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
 
       // Wait for TURN credentials
       return new Promise((resolve, reject) => {
@@ -123,8 +142,12 @@ class WebRTCManager {
           reject(new Error("TURN credentials timeout"));
         }, this.connectionTimeout);
 
+        const finalTimeout = setTimeout(() => {
+          reject(new Error("TURN credentials timeout"));
+        }, this.connectionTimeout);
         socket.once("turnCredentials", async (credentials) => {
           clearTimeout(turnTimeout);
+          clearTimeout(finalTimeout);
           
           try {
             const pc = await this.createPeerConnection(credentials, socket, roomId, stream);
