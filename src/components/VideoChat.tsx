@@ -284,6 +284,39 @@ const VideoChat = () => {
         });
       }
 
+      // Clean up remote stream
+      if (
+        remoteVideoRef.current &&
+        remoteVideoRef.current.srcObject instanceof MediaStream
+      ) {
+        const remoteStream = remoteVideoRef.current.srcObject;
+        remoteStream.getTracks().forEach((track) => {
+          track.stop();
+          console.log("Stopped remote track:", track.kind);
+        });
+        remoteVideoRef.current.srcObject = null;
+      }
+
+      if (peerConnectionRef.current) {
+        // Close all peer connection transceivers
+        peerConnectionRef.current.getTransceivers().forEach((transceiver) => {
+          if (transceiver.stop) {
+            transceiver.stop();
+          }
+        });
+
+        // Close the peer connection
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+      }
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+
       // Remove socket listeners
       handleLeaveRoom();
       socket.off("partnerLeft");
