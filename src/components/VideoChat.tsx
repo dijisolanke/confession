@@ -128,6 +128,10 @@ const VideoChat = () => {
           pc.close();
           setupCall(); // Attempt to restart the call
         }
+
+        if (pc.connectionState === "closed") {
+          navigate("/");
+        }
       };
 
       // Handle incoming remote tracks
@@ -172,23 +176,23 @@ const VideoChat = () => {
     console.log("Setting up new call...");
     socket.emit("requestTurnCredentials");
   };
-
-  const handleLeaveRoom = () => {
-    if (peerConnectionRef.current) {
-      socket.emit("leaveRoom");
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
-    }
-    // Clean up video tracks
-    if (localVideoRef.current?.srcObject instanceof MediaStream) {
-      localVideoRef.current.srcObject
-        .getTracks()
-        .forEach((track) => track.stop());
-    }
-    navigate("/");
-  };
   useEffect(() => {
     let isComponentMounted = true;
+
+    const handleLeaveRoom = () => {
+      if (peerConnectionRef.current) {
+        socket.emit("leaveRoom");
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      // Clean up video tracks
+      if (localVideoRef.current?.srcObject instanceof MediaStream) {
+        localVideoRef.current.srcObject
+          .getTracks()
+          .forEach((track) => track.stop());
+      }
+      navigate("/");
+    };
 
     console.log("VideoChat mounted with:", {
       roomId,
@@ -295,6 +299,9 @@ const VideoChat = () => {
           if (peerConnectionRef.current) {
             peerConnectionRef.current.close();
           }
+          navigate("/");
+          window.location.reload();
+          console.log("page reloaded");
         });
       } catch (error) {
         console.error("Setup failed:", error);
@@ -403,7 +410,18 @@ const VideoChat = () => {
         </div>
       </div>
       <button
-        onClick={handleLeaveRoom}
+        onClick={() => {
+          if (localVideoRef.current?.srcObject instanceof MediaStream) {
+            localVideoRef.current.srcObject
+              .getTracks()
+              .forEach((track) => track.stop());
+          }
+          if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+          }
+          socket.emit("leaveRoom"); // Add this line
+          navigate("/");
+        }}
         className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
       >
         Leave Chat
