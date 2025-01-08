@@ -123,6 +123,10 @@ const VideoChat = () => {
         console.log("Connection state changed:", pc.connectionState);
         dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
 
+        if (pc.connectionState === "closed") {
+          navigate("/");
+        }
+
         if (pc.connectionState === "failed") {
           console.log("Connection failed, closing peer connection...");
           pc.close();
