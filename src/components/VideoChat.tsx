@@ -58,7 +58,7 @@ const VideoChat = () => {
   const [callEstablished, setCallEstablished] = useState(false);
 
   const retrySetup = () => {
-    if (retryCount < 3) {
+    if (retryCount < 3 && !callEstablished) {
       console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
       setRetryCount((prevCount) => prevCount + 1);
       setTimeout(() => {
@@ -140,6 +140,7 @@ const VideoChat = () => {
 
         if (pc.connectionState === "connected") {
           setCallEstablished(true);
+          setIsLoading(false);
         } else if (pc.connectionState === "failed") {
           console.log("Connection failed, closing peer connection...");
           pc.close();
@@ -195,6 +196,7 @@ const VideoChat = () => {
   const setupCall = async () => {
     console.log("Setting up new call...");
     setRetryCount(0);
+    setCallEstablished(false);
     socket.emit("requestTurnCredentials");
   };
   useEffect(() => {
