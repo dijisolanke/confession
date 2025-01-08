@@ -1,40 +1,8 @@
-import { useEffect, useRef, useState, useReducer } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 
 const socket = io("https://server-0w31.onrender.com");
-
-interface RTCState {
-  makingOffer: boolean;
-  ignoreOffer: boolean;
-  polite: boolean;
-  connectionState: string;
-}
-
-type RTCAction =
-  | { type: "SET_MAKING_OFFER"; payload: boolean }
-  | { type: "SET_IGNORE_OFFER"; payload: boolean }
-  | { type: "SET_CONNECTION_STATE"; payload: string };
-
-const initialState: RTCState = {
-  makingOffer: false,
-  ignoreOffer: false,
-  polite: false,
-  connectionState: "new",
-};
-
-function rtcReducer(state: RTCState, action: RTCAction): RTCState {
-  switch (action.type) {
-    case "SET_MAKING_OFFER":
-      return { ...state, makingOffer: action.payload };
-    case "SET_IGNORE_OFFER":
-      return { ...state, ignoreOffer: action.payload };
-    case "SET_CONNECTION_STATE":
-      return { ...state, connectionState: action.payload };
-    default:
-      return state;
-  }
-}
 
 const VideoChat = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -43,17 +11,16 @@ const VideoChat = () => {
   const [partnerAlias] = useState<string>(
     location.state?.partnerAlias || "Anonymous"
   );
+  const [connectionState, setConnectionState] = useState<string>("new");
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-
-  const [rtcState, dispatch] = useReducer(rtcReducer, {
-    ...initialState,
-    polite: location.state?.isInitiator === false,
-  });
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const makingOffer = useRef(false);
+  const ignoreOffer = useRef(false);
+  const polite = useRef(location.state?.isInitiator === false); // non-initiator is polite
 
   const setupMediaStream = async () => {
     try {
@@ -121,7 +88,7 @@ const VideoChat = () => {
 
       pc.onconnectionstatechange = () => {
         console.log("Connection state changed:", pc.connectionState);
-        dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
+        setConnectionState(pc.connectionState);
 
         if (pc.connectionState === "failed") {
           console.log("Connection failed, closing peer connection...");
@@ -148,7 +115,8 @@ const VideoChat = () => {
 
       pc.onnegotiationneeded = async () => {
         try {
-          dispatch({ type: "SET_MAKING_OFFER", payload: true });
+          makingOffer.current = true;
+          console.log("Negotiation needed, creating offer...");
           await pc.setLocalDescription();
           socket.emit("offer", {
             offer: pc.localDescription,
@@ -157,7 +125,7 @@ const VideoChat = () => {
         } catch (err) {
           console.error(err);
         } finally {
-          dispatch({ type: "SET_MAKING_OFFER", payload: false });
+          makingOffer.current = false;
         }
       };
 
@@ -223,14 +191,10 @@ const VideoChat = () => {
 
           const pc = peerConnectionRef.current;
           const offerCollision =
-            rtcState.makingOffer || pc.signalingState !== "stable";
+            makingOffer.current || pc.signalingState !== "stable";
 
-          dispatch({
-            type: "SET_IGNORE_OFFER",
-            payload: !rtcState.polite && offerCollision,
-          });
-
-          if (rtcState.ignoreOffer) {
+          ignoreOffer.current = !polite.current && offerCollision;
+          if (ignoreOffer.current) {
             console.log("Ignoring colliding offer (impolite peer)");
             return;
           }
@@ -370,7 +334,7 @@ const VideoChat = () => {
       {isLoading && <p>Initializing video chat...</p>}
       {mediaError && <p className="text-red-500">Error: {mediaError}</p>}
       <p className="text-sm text-gray-600">
-        Connection State: {rtcState.connectionState}
+        Connection State: {connectionState}
       </p>
       <div className="flex gap-4">
         <div className="relative">
