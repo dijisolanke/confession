@@ -301,7 +301,7 @@ const VideoChat = () => {
           }
           navigate("/");
           window.location.reload();
-          console.log("page reloaded");
+          console.log("page reloaded!");
         });
       } catch (error) {
         console.error("Setup failed:", error);
