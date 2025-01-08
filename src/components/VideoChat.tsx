@@ -55,6 +55,7 @@ const VideoChat = () => {
   });
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [callEstablished, setCallEstablished] = useState(false);
 
   const retrySetup = () => {
     if (retryCount < 3) {
@@ -137,13 +138,18 @@ const VideoChat = () => {
         console.log("Connection state changed:", pc.connectionState);
         dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
 
-        if (pc.connectionState === "failed") {
+        if (pc.connectionState === "connected") {
+          setCallEstablished(true);
+        } else if (pc.connectionState === "failed") {
           console.log("Connection failed, closing peer connection...");
           pc.close();
-          setupCall(); // Attempt to restart the call
-        }
-
-        if (pc.connectionState === "closed") {
+          if (!callEstablished) {
+            console.log("Attempting to restart the call...");
+            setupCall();
+          } else {
+            console.log("Call was previously established. Not retrying.");
+          }
+        } else if (pc.connectionState === "closed") {
           navigate("/");
         }
       };
