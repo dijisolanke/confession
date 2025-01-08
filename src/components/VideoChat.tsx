@@ -130,7 +130,9 @@ const VideoChat = () => {
         console.log("ICE connection state:", pc.iceConnectionState);
         if (pc.iceConnectionState === "disconnected") {
           console.log("ICE connection disconnected, attempting restart...");
-          pc.restartIce();
+          if (!callEstablished) {
+            pc.restartIce();
+          }
         }
       };
 
@@ -168,6 +170,15 @@ const VideoChat = () => {
             streamId: event.streams[0].id,
             tracks: event.streams[0].getTracks().length,
           });
+          // Ensure both streams are established before setting callEstablished
+          if (
+            localVideoRef.current &&
+            localVideoRef.current.srcObject &&
+            event.streams[0]
+          ) {
+            setCallEstablished(true);
+            setIsLoading(false);
+          }
         }
       };
 
