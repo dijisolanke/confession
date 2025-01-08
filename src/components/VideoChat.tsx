@@ -54,6 +54,20 @@ const VideoChat = () => {
     polite: location.state?.isInitiator === false,
   });
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const retrySetup = () => {
+    if (retryCount < 3) {
+      console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
+      setRetryCount((prevCount) => prevCount + 1);
+      setTimeout(() => {
+        socket.emit("requestTurnCredentials");
+      }, 2000); // Wait 2 seconds before retrying
+    } else {
+      console.log("Max retry attempts reached. Call setup failed.");
+      setMediaError("Failed to establish connection after multiple attempts.");
+    }
+  };
 
   const setupMediaStream = async () => {
     try {
@@ -174,6 +188,7 @@ const VideoChat = () => {
 
   const setupCall = async () => {
     console.log("Setting up new call...");
+    setRetryCount(0);
     socket.emit("requestTurnCredentials");
   };
   useEffect(() => {
@@ -267,7 +282,9 @@ const VideoChat = () => {
               to: from,
             });
           } catch (err) {
-            console.error("Error handling offer:", err);
+            console.error("Setup failed:", err);
+            setMediaError(err instanceof Error ? err.message : "Setup failed");
+            retrySetup(); // Add this line to retry on failure
           }
         });
 
@@ -315,6 +332,8 @@ const VideoChat = () => {
     return () => {
       isComponentMounted = false;
       console.log("Cleaning up...");
+
+      setRetryCount(0);
 
       // Clean up local stream
       if (localStreamRef.current) {
