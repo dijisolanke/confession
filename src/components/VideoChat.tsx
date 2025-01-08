@@ -353,6 +353,14 @@ const VideoChat = () => {
         remoteVideoRef.current.srcObject = null;
       }
 
+      try {
+        navigator.mediaDevices
+          .getUserMedia({ audio: false, video: false })
+          .catch(() => console.log("Permissions reset"));
+      } catch (err) {
+        console.log("Could not reset permissions");
+      }
+
       // Remove socket listeners
       handleLeaveRoom();
       socket.off("partnerLeft");
