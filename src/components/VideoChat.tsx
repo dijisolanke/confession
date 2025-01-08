@@ -185,6 +185,7 @@ const VideoChat = () => {
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
         console.log("Closed peer connection");
+        navigate("/");
       }
     };
 
