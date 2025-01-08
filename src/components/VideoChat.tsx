@@ -123,14 +123,14 @@ const VideoChat = () => {
         console.log("Connection state changed:", pc.connectionState);
         dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
 
-        if (pc.connectionState === "closed") {
-          navigate("/");
-        }
-
         if (pc.connectionState === "failed") {
           console.log("Connection failed, closing peer connection...");
           pc.close();
           setupCall(); // Attempt to restart the call
+        }
+
+        if (pc.connectionState === "closed") {
+          navigate("/");
         }
       };
 
@@ -262,14 +262,6 @@ const VideoChat = () => {
           } catch (err) {
             console.error("Error handling offer:", err);
           }
-
-          // const answer = await pc.createAnswer();
-          // await pc.setLocalDescription(answer);
-
-          // socket.emit("answer", {
-          //   answer: pc.localDescription,
-          //   to: from,
-          // });
         });
 
         socket.on("answer", async ({ answer, from }) => {
@@ -415,6 +407,9 @@ const VideoChat = () => {
             localVideoRef.current.srcObject
               .getTracks()
               .forEach((track) => track.stop());
+          }
+          if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
           }
           socket.emit("leaveRoom"); // Add this line
           navigate("/");
