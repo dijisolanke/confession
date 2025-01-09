@@ -10,6 +10,13 @@ const Lobby: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    try {
+      navigator.mediaDevices
+        .getUserMedia({ audio: false, video: false })
+        .catch(() => console.log("Permissions reset"));
+    } catch (err) {
+      console.log("Could not reset permissions");
+    }
     socket.on("waitingUsersUpdate", (users: string[]) => {
       setWaitingUsers(users);
     });

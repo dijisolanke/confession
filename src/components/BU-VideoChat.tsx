@@ -1,40 +1,8 @@
-import { useEffect, useRef, useState, useReducer } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 
 const socket = io("https://server-0w31.onrender.com");
-
-interface RTCState {
-  makingOffer: boolean;
-  ignoreOffer: boolean;
-  polite: boolean;
-  connectionState: string;
-}
-
-type RTCAction =
-  | { type: "SET_MAKING_OFFER"; payload: boolean }
-  | { type: "SET_IGNORE_OFFER"; payload: boolean }
-  | { type: "SET_CONNECTION_STATE"; payload: string };
-
-const initialState: RTCState = {
-  makingOffer: false,
-  ignoreOffer: false,
-  polite: false,
-  connectionState: "new",
-};
-
-function rtcReducer(state: RTCState, action: RTCAction): RTCState {
-  switch (action.type) {
-    case "SET_MAKING_OFFER":
-      return { ...state, makingOffer: action.payload };
-    case "SET_IGNORE_OFFER":
-      return { ...state, ignoreOffer: action.payload };
-    case "SET_CONNECTION_STATE":
-      return { ...state, connectionState: action.payload };
-    default:
-      return state;
-  }
-}
 
 const VideoChat = () => {
   const { roomId } = useParams<{ roomId: string }>();
@@ -43,35 +11,16 @@ const VideoChat = () => {
   const [partnerAlias] = useState<string>(
     location.state?.partnerAlias || "Anonymous"
   );
+  const [connectionState, setConnectionState] = useState<string>("new");
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
-
-  const [rtcState, dispatch] = useReducer(rtcReducer, {
-    ...initialState,
-    polite: location.state?.isInitiator === false,
-  });
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
-  const [isRetrying, setIsRetrying] = useState(false);
-
-  const retrySetup = () => {
-    if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
-      console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
-      setIsRetrying(true);
-      setRetryCount((prevCount) => prevCount + 1);
-      setTimeout(() => {
-        socket.emit("requestTurnCredentials");
-        setIsRetrying(false);
-      }, 2000);
-    } else if (!mediaStreamsEstablished && retryCount >= 3) {
-      console.log("Max retry attempts reached. Call setup failed.");
-      setMediaError("Failed to establish connection after multiple attempts.");
-    }
-  };
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const makingOffer = useRef(false);
+  const ignoreOffer = useRef(false);
+  const polite = useRef(location.state?.isInitiator === false); // non-initiator is polite
 
   const setupMediaStream = async () => {
     try {
@@ -133,25 +82,18 @@ const VideoChat = () => {
         console.log("ICE connection state:", pc.iceConnectionState);
         if (pc.iceConnectionState === "disconnected") {
           console.log("ICE connection disconnected, attempting restart...");
+          pc.restartIce();
         }
       };
 
       pc.onconnectionstatechange = () => {
         console.log("Connection state changed:", pc.connectionState);
-        dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
+        setConnectionState(pc.connectionState);
 
-        if (pc.connectionState === "connected") {
-          setIsLoading(false);
-        } else if (
-          pc.connectionState === "failed" &&
-          !mediaStreamsEstablished &&
-          !isRetrying
-        ) {
+        if (pc.connectionState === "failed") {
           console.log("Connection failed, closing peer connection...");
           pc.close();
-          retrySetup();
-        } else if (pc.connectionState === "closed") {
-          navigate("/");
+          setupCall(); // Attempt to restart the call
         }
       };
 
@@ -168,35 +110,13 @@ const VideoChat = () => {
             streamId: event.streams[0].id,
             tracks: event.streams[0].getTracks().length,
           });
-          // Ensure both streams are established before setting callEstablished
-          if (
-            localVideoRef.current?.srcObject instanceof MediaStream &&
-            remoteVideoRef.current.srcObject instanceof MediaStream
-          ) {
-            const localStream = localVideoRef.current.srcObject;
-            const remoteStream = remoteVideoRef.current.srcObject;
-
-            // Verify both streams have active audio and video tracks
-            const hasLocalTracks =
-              localStream.getVideoTracks().some((track) => track.enabled) &&
-              localStream.getAudioTracks().some((track) => track.enabled);
-            const hasRemoteTracks =
-              remoteStream.getVideoTracks().some((track) => track.enabled) &&
-              remoteStream.getAudioTracks().some((track) => track.enabled);
-
-            if (hasLocalTracks && hasRemoteTracks) {
-              setMediaStreamsEstablished(true);
-              setIsLoading(false);
-              // Reset retry count since connection is successful
-              setRetryCount(0);
-            }
-          }
         }
       };
 
       pc.onnegotiationneeded = async () => {
         try {
-          dispatch({ type: "SET_MAKING_OFFER", payload: true });
+          makingOffer.current = true;
+          console.log("Negotiation needed, creating offer...");
           await pc.setLocalDescription();
           socket.emit("offer", {
             offer: pc.localDescription,
@@ -205,7 +125,7 @@ const VideoChat = () => {
         } catch (err) {
           console.error(err);
         } finally {
-          dispatch({ type: "SET_MAKING_OFFER", payload: false });
+          makingOffer.current = false;
         }
       };
 
@@ -217,13 +137,9 @@ const VideoChat = () => {
   };
 
   const setupCall = async () => {
-    if (isRetrying || mediaStreamsEstablished) return;
     console.log("Setting up new call...");
-    setRetryCount(0);
-    setMediaStreamsEstablished(false);
     socket.emit("requestTurnCredentials");
   };
-
   useEffect(() => {
     let isComponentMounted = true;
 
@@ -232,15 +148,8 @@ const VideoChat = () => {
         socket.emit("leaveRoom");
         peerConnectionRef.current.close();
         peerConnectionRef.current = null;
+        console.log("Closed peer connection");
       }
-      // Clean up video tracks
-      if (localVideoRef.current?.srcObject instanceof MediaStream) {
-        localVideoRef.current.srcObject
-          .getTracks()
-          .forEach((track) => track.stop());
-      }
-      navigate("/");
-      window.location.reload();
     };
 
     console.log("VideoChat mounted with:", {
@@ -249,11 +158,12 @@ const VideoChat = () => {
       partnerAlias,
     });
 
-    const handleTurnCredentials = async (credentials: RTCIceServer[]) => {
-      if (!isComponentMounted || mediaStreamsEstablished) {
-        console.log(
-          "Ignoring TURN credentials - component unmounted or call established"
-        );
+    socket.emit("requestTurnCredentials");
+    console.log("Requested TURN credentials");
+
+    socket.on("turnCredentials", async (credentials) => {
+      if (!isComponentMounted) {
+        console.log("Component unmounted, ignoring TURN credentials");
         return;
       }
 
@@ -261,9 +171,8 @@ const VideoChat = () => {
         console.log("Received TURN credentials, beginning setup...");
         setIsLoading(true);
 
+        //setup mediaStream
         const stream = await setupMediaStream();
-        localStreamRef.current = stream; // This line was missing
-
         console.log("Media stream obtained:", {
           videoTracks: stream.getVideoTracks().length,
           audioTracks: stream.getAudioTracks().length,
@@ -271,129 +180,100 @@ const VideoChat = () => {
 
         const pc = await createPeerConnection(credentials);
         peerConnectionRef.current = pc;
+        console.log("Created peer connection");
 
         socket.emit("joinRoom", { roomId });
         console.log("Joined room:", roomId);
+
+        socket.on("offer", async ({ offer, from }) => {
+          if (!peerConnectionRef.current) return;
+          console.log("Received offer from peer:", offer.type);
+
+          const pc = peerConnectionRef.current;
+          const offerCollision =
+            makingOffer.current || pc.signalingState !== "stable";
+
+          ignoreOffer.current = !polite.current && offerCollision;
+          if (ignoreOffer.current) {
+            console.log("Ignoring colliding offer (impolite peer)");
+            return;
+          }
+
+          try {
+            if (offerCollision) {
+              console.log("Handling offer collision...");
+              await Promise.all([
+                pc.setLocalDescription({ type: "rollback" }),
+                pc.setRemoteDescription(offer),
+              ]);
+            } else {
+              await pc.setRemoteDescription(offer);
+            }
+
+            console.log("Creating answer...");
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+
+            console.log("Sending answer to peer");
+            socket.emit("answer", {
+              answer: pc.localDescription,
+              to: from,
+            });
+          } catch (err) {
+            console.error("Error handling offer:", err);
+          }
+
+          // const answer = await pc.createAnswer();
+          // await pc.setLocalDescription(answer);
+
+          // socket.emit("answer", {
+          //   answer: pc.localDescription,
+          //   to: from,
+          // });
+        });
+
+        socket.on("answer", async ({ answer, from }) => {
+          console.log("Received answer from:", from);
+          if (peerConnectionRef.current) {
+            await peerConnectionRef.current.setRemoteDescription(
+              new RTCSessionDescription(answer)
+            );
+            console.log("Set remote description from answer");
+            setIsLoading(false); //might remove
+          }
+        });
+
+        socket.on("ice-candidate", async ({ candidate }) => {
+          try {
+            if (!peerConnectionRef.current) return;
+            console.log("Received ICE candidate:", candidate.candidate);
+            await peerConnectionRef.current.addIceCandidate(
+              new RTCIceCandidate(candidate)
+            );
+            console.log("Successfully added ICE candidate");
+          } catch (err) {
+            console.error("Error adding ICE candidate:", err);
+          }
+        });
+
+        socket.on("partnerLeft", () => {
+          console.log("Partner left the room");
+          if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+          }
+          navigate("/");
+        });
       } catch (error) {
         console.error("Setup failed:", error);
         setMediaError(error instanceof Error ? error.message : "Setup failed");
-        retrySetup();
       }
-    };
-
-    const handleOffer = async ({
-      offer,
-      from,
-    }: {
-      offer: RTCSessionDescriptionInit;
-      from: string;
-    }) => {
-      if (!peerConnectionRef.current) return;
-      console.log("Received offer from peer:", offer.type);
-
-      const pc = peerConnectionRef.current;
-      const offerCollision =
-        rtcState.makingOffer || pc.signalingState !== "stable";
-
-      dispatch({
-        type: "SET_IGNORE_OFFER",
-        payload: !rtcState.polite && offerCollision,
-      });
-
-      if (rtcState.ignoreOffer) {
-        console.log("Ignoring colliding offer (impolite peer)");
-        return;
-      }
-
-      try {
-        if (offerCollision) {
-          console.log("Handling offer collision...");
-          await Promise.all([
-            pc.setLocalDescription({ type: "rollback" }),
-            pc.setRemoteDescription(offer),
-          ]);
-        } else {
-          await pc.setRemoteDescription(offer);
-        }
-
-        console.log("Creating answer...");
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-
-        console.log("Sending answer to peer");
-        socket.emit("answer", {
-          answer: pc.localDescription,
-          to: from,
-        });
-      } catch (err) {
-        console.error("Setup failed:", err);
-        setMediaError(err instanceof Error ? err.message : "Setup failed");
-        if (!mediaStreamsEstablished) {
-          retrySetup();
-        }
-      }
-    };
-
-    const handleAnswer = async ({
-      answer,
-      from,
-    }: {
-      answer: RTCSessionDescriptionInit;
-      from: string;
-    }) => {
-      console.log("Received answer from:", from);
-      if (peerConnectionRef.current) {
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(answer)
-        );
-        console.log("Set remote description from answer");
-        setIsLoading(false);
-      }
-    };
-
-    const handleIceCandidate = async ({
-      candidate,
-    }: {
-      candidate: RTCIceCandidateInit;
-    }) => {
-      try {
-        if (!peerConnectionRef.current) return;
-        console.log("Received ICE candidate:", candidate.candidate);
-        await peerConnectionRef.current.addIceCandidate(
-          new RTCIceCandidate(candidate)
-        );
-        console.log("Successfully added ICE candidate");
-      } catch (err) {
-        console.error("Error adding ICE candidate:", err);
-      }
-    };
-
-    const handlePartnerLeft = () => {
-      console.log("Partner left the room");
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-      }
-      navigate("/");
-      window.location.reload();
-      console.log("page reloaded!");
-    };
-
-    socket.emit("requestTurnCredentials");
-    console.log("Requested TURN credentials");
-
-    socket.on("turnCredentials", handleTurnCredentials);
-    socket.on("offer", handleOffer);
-    socket.on("answer", handleAnswer);
-    socket.on("ice-candidate", handleIceCandidate);
-    socket.on("partnerLeft", handlePartnerLeft);
+    });
 
     setupCall();
 
     return () => {
       isComponentMounted = false;
       console.log("Cleaning up...");
-
-      setRetryCount(0);
 
       // Clean up local stream
       if (localStreamRef.current) {
@@ -437,14 +317,6 @@ const VideoChat = () => {
         remoteVideoRef.current.srcObject = null;
       }
 
-      try {
-        navigator.mediaDevices
-          .getUserMedia({ audio: false, video: false })
-          .catch(() => console.log("Permissions reset"));
-      } catch (err) {
-        console.log("Could not reset permissions");
-      }
-
       // Remove socket listeners
       handleLeaveRoom();
       socket.off("partnerLeft");
@@ -462,7 +334,7 @@ const VideoChat = () => {
       {isLoading && <p>Initializing video chat...</p>}
       {mediaError && <p className="text-red-500">Error: {mediaError}</p>}
       <p className="text-sm text-gray-600">
-        Connection State: {rtcState.connectionState}
+        Connection State: {connectionState}
       </p>
       <div className="flex gap-4">
         <div className="relative">
@@ -496,12 +368,8 @@ const VideoChat = () => {
               .getTracks()
               .forEach((track) => track.stop());
           }
-          if (peerConnectionRef.current) {
-            peerConnectionRef.current.close();
-          }
           socket.emit("leaveRoom"); // Add this line
           navigate("/");
-          window.location.reload();
         }}
         className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
       >
