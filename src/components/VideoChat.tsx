@@ -56,15 +56,18 @@ const VideoChat = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const retrySetup = () => {
-    if (retryCount < 3 && !mediaStreamsEstablished) {
+    if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
       console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
+      setIsRetrying(true);
       setRetryCount((prevCount) => prevCount + 1);
       setTimeout(() => {
         socket.emit("requestTurnCredentials");
+        setIsRetrying(false);
       }, 2000);
-    } else if (!mediaStreamsEstablished) {
+    } else if (!mediaStreamsEstablished && retryCount >= 3) {
       console.log("Max retry attempts reached. Call setup failed.");
       setMediaError("Failed to establish connection after multiple attempts.");
     }
@@ -141,12 +144,12 @@ const VideoChat = () => {
           setIsLoading(false);
         } else if (
           pc.connectionState === "failed" &&
-          !mediaStreamsEstablished
+          !mediaStreamsEstablished &&
+          !isRetrying
         ) {
           console.log("Connection failed, closing peer connection...");
           pc.close();
-          console.log("Attempting to restart the call...");
-          setupCall();
+          retrySetup();
         } else if (pc.connectionState === "closed") {
           navigate("/");
         }
@@ -214,11 +217,13 @@ const VideoChat = () => {
   };
 
   const setupCall = async () => {
+    if (isRetrying || mediaStreamsEstablished) return;
     console.log("Setting up new call...");
     setRetryCount(0);
     setMediaStreamsEstablished(false);
     socket.emit("requestTurnCredentials");
   };
+
   useEffect(() => {
     let isComponentMounted = true;
 
@@ -244,12 +249,11 @@ const VideoChat = () => {
       partnerAlias,
     });
 
-    socket.emit("requestTurnCredentials");
-    console.log("Requested TURN credentials");
-
-    socket.on("turnCredentials", async (credentials) => {
-      if (!isComponentMounted) {
-        console.log("Component unmounted, ignoring TURN credentials");
+    const handleTurnCredentials = async (credentials: RTCIceServer[]) => {
+      if (!isComponentMounted || mediaStreamsEstablished) {
+        console.log(
+          "Ignoring TURN credentials - component unmounted or call established"
+        );
         return;
       }
 
@@ -257,8 +261,9 @@ const VideoChat = () => {
         console.log("Received TURN credentials, beginning setup...");
         setIsLoading(true);
 
-        //setup mediaStream
         const stream = await setupMediaStream();
+        localStreamRef.current = stream; // This line was missing
+
         console.log("Media stream obtained:", {
           videoTracks: stream.getVideoTracks().length,
           audioTracks: stream.getAudioTracks().length,
@@ -266,94 +271,121 @@ const VideoChat = () => {
 
         const pc = await createPeerConnection(credentials);
         peerConnectionRef.current = pc;
-        console.log("Created peer connection");
 
         socket.emit("joinRoom", { roomId });
         console.log("Joined room:", roomId);
-
-        socket.on("offer", async ({ offer, from }) => {
-          if (!peerConnectionRef.current) return;
-          console.log("Received offer from peer:", offer.type);
-
-          const pc = peerConnectionRef.current;
-          const offerCollision =
-            rtcState.makingOffer || pc.signalingState !== "stable";
-
-          dispatch({
-            type: "SET_IGNORE_OFFER",
-            payload: !rtcState.polite && offerCollision,
-          });
-
-          if (rtcState.ignoreOffer) {
-            console.log("Ignoring colliding offer (impolite peer)");
-            return;
-          }
-
-          try {
-            if (offerCollision) {
-              console.log("Handling offer collision...");
-              await Promise.all([
-                pc.setLocalDescription({ type: "rollback" }),
-                pc.setRemoteDescription(offer),
-              ]);
-            } else {
-              await pc.setRemoteDescription(offer);
-            }
-
-            console.log("Creating answer...");
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-
-            console.log("Sending answer to peer");
-            socket.emit("answer", {
-              answer: pc.localDescription,
-              to: from,
-            });
-          } catch (err) {
-            console.error("Setup failed:", err);
-            setMediaError(err instanceof Error ? err.message : "Setup failed");
-            retrySetup(); // Add this line to retry on failure
-          }
-        });
-
-        socket.on("answer", async ({ answer, from }) => {
-          console.log("Received answer from:", from);
-          if (peerConnectionRef.current) {
-            await peerConnectionRef.current.setRemoteDescription(
-              new RTCSessionDescription(answer)
-            );
-            console.log("Set remote description from answer");
-            setIsLoading(false); //might remove
-          }
-        });
-
-        socket.on("ice-candidate", async ({ candidate }) => {
-          try {
-            if (!peerConnectionRef.current) return;
-            console.log("Received ICE candidate:", candidate.candidate);
-            await peerConnectionRef.current.addIceCandidate(
-              new RTCIceCandidate(candidate)
-            );
-            console.log("Successfully added ICE candidate");
-          } catch (err) {
-            console.error("Error adding ICE candidate:", err);
-          }
-        });
-
-        socket.on("partnerLeft", () => {
-          console.log("Partner left the room");
-          if (peerConnectionRef.current) {
-            peerConnectionRef.current.close();
-          }
-          navigate("/");
-          window.location.reload();
-          console.log("page reloaded!");
-        });
       } catch (error) {
         console.error("Setup failed:", error);
         setMediaError(error instanceof Error ? error.message : "Setup failed");
+        retrySetup();
       }
-    });
+    };
+
+    const handleOffer = async ({
+      offer,
+      from,
+    }: {
+      offer: RTCSessionDescriptionInit;
+      from: string;
+    }) => {
+      if (!peerConnectionRef.current) return;
+      console.log("Received offer from peer:", offer.type);
+
+      const pc = peerConnectionRef.current;
+      const offerCollision =
+        rtcState.makingOffer || pc.signalingState !== "stable";
+
+      dispatch({
+        type: "SET_IGNORE_OFFER",
+        payload: !rtcState.polite && offerCollision,
+      });
+
+      if (rtcState.ignoreOffer) {
+        console.log("Ignoring colliding offer (impolite peer)");
+        return;
+      }
+
+      try {
+        if (offerCollision) {
+          console.log("Handling offer collision...");
+          await Promise.all([
+            pc.setLocalDescription({ type: "rollback" }),
+            pc.setRemoteDescription(offer),
+          ]);
+        } else {
+          await pc.setRemoteDescription(offer);
+        }
+
+        console.log("Creating answer...");
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        console.log("Sending answer to peer");
+        socket.emit("answer", {
+          answer: pc.localDescription,
+          to: from,
+        });
+      } catch (err) {
+        console.error("Setup failed:", err);
+        setMediaError(err instanceof Error ? err.message : "Setup failed");
+        if (!mediaStreamsEstablished) {
+          retrySetup();
+        }
+      }
+    };
+
+    const handleAnswer = async ({
+      answer,
+      from,
+    }: {
+      answer: RTCSessionDescriptionInit;
+      from: string;
+    }) => {
+      console.log("Received answer from:", from);
+      if (peerConnectionRef.current) {
+        await peerConnectionRef.current.setRemoteDescription(
+          new RTCSessionDescription(answer)
+        );
+        console.log("Set remote description from answer");
+        setIsLoading(false);
+      }
+    };
+
+    const handleIceCandidate = async ({
+      candidate,
+    }: {
+      candidate: RTCIceCandidateInit;
+    }) => {
+      try {
+        if (!peerConnectionRef.current) return;
+        console.log("Received ICE candidate:", candidate.candidate);
+        await peerConnectionRef.current.addIceCandidate(
+          new RTCIceCandidate(candidate)
+        );
+        console.log("Successfully added ICE candidate");
+      } catch (err) {
+        console.error("Error adding ICE candidate:", err);
+      }
+    };
+
+    const handlePartnerLeft = () => {
+      console.log("Partner left the room");
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+      }
+      navigate("/");
+      window.location.reload();
+      console.log("page reloaded!");
+    };
+
+    socket.emit("requestTurnCredentials");
+    console.log("Requested TURN credentials");
+
+    socket.on("turnCredentials", handleTurnCredentials);
+    socket.on("offer", handleOffer);
+    socket.on("answer", handleAnswer);
+    socket.on("ice-candidate", handleIceCandidate);
+    socket.on("partnerLeft", handlePartnerLeft);
 
     setupCall();
 
