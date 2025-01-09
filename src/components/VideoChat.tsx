@@ -55,16 +55,16 @@ const VideoChat = () => {
   });
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const [retryCount, setRetryCount] = useState(0);
-  const [callEstablished, setCallEstablished] = useState(false);
+  const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
 
   const retrySetup = () => {
-    if (retryCount < 3 && !callEstablished) {
+    if (retryCount < 3 && !mediaStreamsEstablished) {
       console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
       setRetryCount((prevCount) => prevCount + 1);
       setTimeout(() => {
         socket.emit("requestTurnCredentials");
-      }, 2000); // Wait 2 seconds before retrying
-    } else {
+      }, 2000);
+    } else if (!mediaStreamsEstablished) {
       console.log("Max retry attempts reached. Call setup failed.");
       setMediaError("Failed to establish connection after multiple attempts.");
     }
@@ -130,9 +130,6 @@ const VideoChat = () => {
         console.log("ICE connection state:", pc.iceConnectionState);
         if (pc.iceConnectionState === "disconnected") {
           console.log("ICE connection disconnected, attempting restart...");
-          if (!callEstablished) {
-            pc.restartIce();
-          }
         }
       };
 
@@ -141,17 +138,15 @@ const VideoChat = () => {
         dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
 
         if (pc.connectionState === "connected") {
-          setCallEstablished(true);
           setIsLoading(false);
-        } else if (pc.connectionState === "failed") {
+        } else if (
+          pc.connectionState === "failed" &&
+          !mediaStreamsEstablished
+        ) {
           console.log("Connection failed, closing peer connection...");
           pc.close();
-          if (!callEstablished) {
-            console.log("Attempting to restart the call...");
-            setupCall();
-          } else {
-            console.log("Call was previously established. Not retrying.");
-          }
+          console.log("Attempting to restart the call...");
+          setupCall();
         } else if (pc.connectionState === "closed") {
           navigate("/");
         }
@@ -172,12 +167,26 @@ const VideoChat = () => {
           });
           // Ensure both streams are established before setting callEstablished
           if (
-            localVideoRef.current &&
-            localVideoRef.current.srcObject &&
-            event.streams[0]
+            localVideoRef.current?.srcObject instanceof MediaStream &&
+            remoteVideoRef.current.srcObject instanceof MediaStream
           ) {
-            setCallEstablished(true);
-            setIsLoading(false);
+            const localStream = localVideoRef.current.srcObject;
+            const remoteStream = remoteVideoRef.current.srcObject;
+
+            // Verify both streams have active audio and video tracks
+            const hasLocalTracks =
+              localStream.getVideoTracks().some((track) => track.enabled) &&
+              localStream.getAudioTracks().some((track) => track.enabled);
+            const hasRemoteTracks =
+              remoteStream.getVideoTracks().some((track) => track.enabled) &&
+              remoteStream.getAudioTracks().some((track) => track.enabled);
+
+            if (hasLocalTracks && hasRemoteTracks) {
+              setMediaStreamsEstablished(true);
+              setIsLoading(false);
+              // Reset retry count since connection is successful
+              setRetryCount(0);
+            }
           }
         }
       };
@@ -207,7 +216,7 @@ const VideoChat = () => {
   const setupCall = async () => {
     console.log("Setting up new call...");
     setRetryCount(0);
-    setCallEstablished(false);
+    setMediaStreamsEstablished(false);
     socket.emit("requestTurnCredentials");
   };
   useEffect(() => {
