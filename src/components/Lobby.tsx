@@ -36,7 +36,7 @@ const Lobby: React.FC = () => {
     e.preventDefault();
     if (alias) {
       socket.emit("setAlias", alias);
-      if (waitingUsers.length > 0) setButtonState(true);
+      setButtonState(true);
     }
   };
 
