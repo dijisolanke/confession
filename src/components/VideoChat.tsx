@@ -28,8 +28,7 @@ const VideoChat = () => {
     navigate
   );
 
-  const { retryCount, isRetrying, mediaStreamsEstablished, handleRetry } =
-    useConnectionState(peerConnection);
+  const { isRetrying } = useConnectionState(peerConnection);
 
   // Unified loading state
   const isLoading = isLoadingMedia || isLoadingPeer || isRetrying;
