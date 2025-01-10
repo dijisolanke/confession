@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { handleRetrySetup } from "../utils/retrySetup";
-import { setupMediaStream } from "../utils/mediaStreamUtils";
+import { setupMediaStream } from "../utils/setupMediaStream";
 
 const socket = io("https://server-0w31.onrender.com");
 
