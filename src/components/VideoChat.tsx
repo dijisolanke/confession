@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
+import { handleRetrySetup } from "../utils/retrySetup";
 
 const socket = io("https://server-0w31.onrender.com");
 
@@ -59,19 +60,32 @@ const VideoChat = () => {
   const [isRetrying, setIsRetrying] = useState(false);
 
   const retrySetup = () => {
-    if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
-      console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
-      setIsRetrying(true);
-      setRetryCount((prevCount) => prevCount + 1);
-      setTimeout(() => {
-        socket.emit("requestTurnCredentials");
-        setIsRetrying(false);
-      }, 2000);
-    } else if (!mediaStreamsEstablished && retryCount >= 3) {
-      console.log("Max retry attempts reached. Call setup failed.");
-      setMediaError("Failed to establish connection after multiple attempts.");
-    }
+    handleRetrySetup({
+      socket,
+      mediaStreamsEstablished,
+      isRetrying,
+      retryCount,
+      onRetryStart: () => setIsRetrying(true),
+      onRetryEnd: () => setIsRetrying(false),
+      onMaxRetriesReached: (message) => setMediaError(message),
+      setRetryCount,
+    });
   };
+
+  // const retrySetup = () => {
+  //   if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
+  //     console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
+  //     setIsRetrying(true);
+  //     setRetryCount((prevCount) => prevCount + 1);
+  //     setTimeout(() => {
+  //       socket.emit("requestTurnCredentials");
+  //       setIsRetrying(false);
+  //     }, 2000);
+  //   } else if (!mediaStreamsEstablished && retryCount >= 3) {
+  //     console.log("Max retry attempts reached. Call setup failed.");
+  //     setMediaError("Failed to establish connection after multiple attempts.");
+  //   }
+  // };
 
   const setupMediaStream = async () => {
     try {
