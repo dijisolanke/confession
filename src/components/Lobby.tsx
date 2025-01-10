@@ -36,6 +36,7 @@ const Lobby: React.FC = () => {
     e.preventDefault();
     if (alias) {
       socket.emit("setAlias", alias);
+      //disable button on click
       setButtonState(true);
     }
   };
