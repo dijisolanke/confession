@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { handleRetrySetup } from "../utils/retrySetup";
+import { setupMediaStream } from "../utils/mediaStreamUtils";
 
 const socket = io("https://server-0w31.onrender.com");
 
@@ -72,47 +73,32 @@ const VideoChat = () => {
     });
   };
 
-  // const retrySetup = () => {
-  //   if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
-  //     console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
-  //     setIsRetrying(true);
-  //     setRetryCount((prevCount) => prevCount + 1);
-  //     setTimeout(() => {
-  //       socket.emit("requestTurnCredentials");
-  //       setIsRetrying(false);
-  //     }, 2000);
-  //   } else if (!mediaStreamsEstablished && retryCount >= 3) {
-  //     console.log("Max retry attempts reached. Call setup failed.");
-  //     setMediaError("Failed to establish connection after multiple attempts.");
+  // const setupMediaStream = async () => {
+  //   try {
+  //     const stream = await navigator.mediaDevices.getUserMedia({
+  //       video: {
+  //         width: { ideal: 1280 },
+  //         height: { ideal: 720 },
+  //         facingMode: "user",
+  //       },
+  //       audio: true,
+  //     });
+  //     console.log("Media stream obtained:", {
+  //       videoTracks: stream.getVideoTracks().length,
+  //       audioTracks: stream.getAudioTracks().length,
+  //     });
+  //     localStreamRef.current = stream;
+
+  //     if (localVideoRef.current) {
+  //       localVideoRef.current.srcObject = stream;
+  //       console.log("Local video stream set.");
+  //     }
+  //     return stream;
+  //   } catch (error) {
+  //     console.error("Error accessing media devices:", error);
+  //     throw error;
   //   }
   // };
-
-  const setupMediaStream = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: "user",
-        },
-        audio: true,
-      });
-      console.log("Media stream obtained:", {
-        videoTracks: stream.getVideoTracks().length,
-        audioTracks: stream.getAudioTracks().length,
-      });
-      localStreamRef.current = stream;
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-        console.log("Local video stream set.");
-      }
-      return stream;
-    } catch (error) {
-      console.error("Error accessing media devices:", error);
-      throw error;
-    }
-  };
 
   const createPeerConnection = async (iceServers: RTCIceServer[]) => {
     try {
