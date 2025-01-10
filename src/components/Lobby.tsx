@@ -8,6 +8,7 @@ const Lobby: React.FC = () => {
   const [alias, setAlias] = useState("");
   const [waitingUsers, setWaitingUsers] = useState<string[]>([]);
   const navigate = useNavigate();
+  const [buttonState, setButtonState] = useState(false);
 
   useEffect(() => {
     try {
@@ -35,6 +36,7 @@ const Lobby: React.FC = () => {
     e.preventDefault();
     if (alias) {
       socket.emit("setAlias", alias);
+      setButtonState(true);
     }
   };
 
@@ -49,7 +51,9 @@ const Lobby: React.FC = () => {
           placeholder="Enter your alias"
           required
         />
-        <button type="submit">Join Chat</button>
+        <button type="submit" disabled={buttonState}>
+          Join Chat
+        </button>
       </form>
       <h2>Waiting Users:</h2>
       <ul>
