@@ -36,7 +36,7 @@ const Lobby: React.FC = () => {
     e.preventDefault();
     if (alias) {
       socket.emit("setAlias", alias);
-      setButtonState(true);
+      if (waitingUsers.length > 0) setButtonState(true);
     }
   };
 
@@ -50,6 +50,7 @@ const Lobby: React.FC = () => {
           onChange={(e) => setAlias(e.target.value)}
           placeholder="Enter your alias"
           required
+          disabled={buttonState}
         />
         <button type="submit" disabled={buttonState}>
           Join Chat
