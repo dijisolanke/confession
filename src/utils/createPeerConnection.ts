@@ -1,5 +1,3 @@
-// utils/createPeerConnection.ts
-
 import { Dispatch } from 'react';
 import { NavigateFunction } from 'react-router-dom';
 import { Socket } from 'socket.io-client';
