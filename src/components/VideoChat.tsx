@@ -113,6 +113,15 @@ const VideoChat = () => {
   useEffect(() => {
     let isComponentMounted = true;
 
+    const leaveChat = () => {
+      handleLeaveRoom({
+        peerConnection: peerConnectionRef,
+        socket,
+        localVideoRef,
+        navigate,
+      });
+    };
+
     console.log("VideoChat mounted with:", {
       roomId,
       isInitiator: location.state?.isInitiator,
@@ -276,7 +285,7 @@ const VideoChat = () => {
 
     return () => {
       isComponentMounted = false;
-
+      leaveChat();
       cleanupVideoChat({
         localStreamRef,
         remoteVideoRef,
