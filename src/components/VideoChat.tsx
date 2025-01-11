@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { handleRetrySetup } from "../utils/retrySetup";
+import { handleLeaveRoom } from "../utils/leaveHandler";
 
 const socket = io("https://server-0w31.onrender.com");
 
@@ -71,21 +72,6 @@ const VideoChat = () => {
       setRetryCount,
     });
   };
-
-  // const retrySetup = () => {
-  //   if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
-  //     console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
-  //     setIsRetrying(true);
-  //     setRetryCount((prevCount) => prevCount + 1);
-  //     setTimeout(() => {
-  //       socket.emit("requestTurnCredentials");
-  //       setIsRetrying(false);
-  //     }, 2000);
-  //   } else if (!mediaStreamsEstablished && retryCount >= 3) {
-  //     console.log("Max retry attempts reached. Call setup failed.");
-  //     setMediaError("Failed to establish connection after multiple attempts.");
-  //   }
-  // };
 
   const setupMediaStream = async () => {
     try {
@@ -241,21 +227,29 @@ const VideoChat = () => {
   useEffect(() => {
     let isComponentMounted = true;
 
-    const handleLeaveRoom = () => {
-      if (peerConnectionRef.current) {
-        socket.emit("leaveRoom");
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-      // Clean up video tracks
-      if (localVideoRef.current?.srcObject instanceof MediaStream) {
-        localVideoRef.current.srcObject
-          .getTracks()
-          .forEach((track) => track.stop());
-      }
-      navigate("/");
-      window.location.reload();
+    const leaveChat = () => {
+      handleLeaveRoom({
+        peerConnection: peerConnectionRef,
+        socket,
+        localVideoRef,
+        navigate,
+      });
     };
+    // const handleLeaveRoom = () => {
+    //   if (peerConnectionRef.current) {
+    //     socket.emit("leaveRoom");
+    //     peerConnectionRef.current.close();
+    //     peerConnectionRef.current = null;
+    //   }
+    //   // Clean up video tracks
+    //   if (localVideoRef.current?.srcObject instanceof MediaStream) {
+    //     localVideoRef.current.srcObject
+    //       .getTracks()
+    //       .forEach((track) => track.stop());
+    //   }
+    //   navigate("/");
+    //   window.location.reload();
+    // };
 
     console.log("VideoChat mounted with:", {
       roomId,
@@ -460,7 +454,7 @@ const VideoChat = () => {
       }
 
       // Remove socket listeners
-      handleLeaveRoom();
+      leaveChat();
       socket.off("partnerLeft");
       socket.off("turnCredentials");
       socket.off("offer");
