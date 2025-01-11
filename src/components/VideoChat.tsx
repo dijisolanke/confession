@@ -287,7 +287,6 @@ const VideoChat = () => {
       console.log("Cleaning up...");
 
       setRetryCount(0);
-
       // Clean up local stream
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => {
