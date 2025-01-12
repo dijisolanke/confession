@@ -4,6 +4,7 @@ import io from "socket.io-client";
 import { handleRetrySetup } from "../utils/retrySetup";
 import { handleLeaveRoom } from "../utils/leaveHandler";
 import { createPeerConnection } from "../utils/createPeerConnection";
+import { cleanupVideoChat } from "../utils/cleanup";
 
 const socket = io("https://server-0w31.onrender.com");
 
@@ -284,67 +285,15 @@ const VideoChat = () => {
 
     return () => {
       isComponentMounted = false;
-      console.log("Cleaning up...");
-
-      setRetryCount(0);
-      // Clean up local stream
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          track.stop();
-          console.log("Stopped track:", track.kind);
-          localStreamRef.current = null;
-        });
-      }
-
-      // Clean up remote stream
-      if (
-        remoteVideoRef.current &&
-        remoteVideoRef.current.srcObject instanceof MediaStream
-      ) {
-        const remoteStream = remoteVideoRef.current.srcObject;
-        remoteStream.getTracks().forEach((track) => {
-          track.stop();
-          console.log("Stopped remote track:", track.kind);
-        });
-        remoteVideoRef.current.srcObject = null;
-      }
-
-      if (peerConnectionRef.current) {
-        // Close all peer connection transceivers
-        peerConnectionRef.current.getTransceivers().forEach((transceiver) => {
-          if (transceiver.stop) {
-            transceiver.stop();
-          }
-        });
-
-        // Close the peer connection
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = null;
-      }
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = null;
-      }
-
-      try {
-        navigator.mediaDevices
-          .getUserMedia({ audio: false, video: false })
-          .catch(() => console.log("Permissions reset"));
-      } catch (err) {
-        console.log("Could not reset permissions");
-      }
-
-      // Remove socket listeners
       leaveChat();
-      socket.off("partnerLeft");
-      socket.off("turnCredentials");
-      socket.off("offer");
-      socket.off("answer");
-      socket.off("ice-candidate");
-      socket.disconnect(); // Properly disconnect socket
+      cleanupVideoChat({
+        localStreamRef,
+        remoteVideoRef,
+        localVideoRef,
+        peerConnectionRef,
+        socket,
+        setRetryCount,
+      });
     };
   }, [roomId, location.state?.isInitiator, navigate, partnerAlias]); //might remove partnerAlias
 
