@@ -2,6 +2,8 @@ import styled from "styled-components";
 
 export default styled.div`
 video{
+    height: 400px;
+    width: 400px;
     max-height: 700px;
     max-width: 700px;
     object-fit: contain;
