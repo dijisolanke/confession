@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 
+import { InputContainer, StyledInput, SurgeBorder, Root } from "./StyledLobby";
+
 const socket = io("https://server-0w31.onrender.com"); // Replace with your server URL
 
 const Lobby: React.FC = () => {
@@ -42,28 +44,35 @@ const Lobby: React.FC = () => {
   };
 
   return (
-    <div>
-      <h1>Welcome to the Anonymous Chat</h1>
+    <Root>
+      <h1>Anonymous</h1>
       <form onSubmit={handleJoin}>
-        <input
-          type="text"
-          value={alias}
-          onChange={(e) => setAlias(e.target.value)}
-          placeholder="Enter your alias"
-          required
-          disabled={buttonState}
-        />
+        <InputContainer>
+          <StyledInput
+            type="text"
+            value={alias}
+            onChange={(e) => setAlias(e.target.value)}
+            placeholder="Enter your alias"
+            required
+            disabled={buttonState}
+          />
+          <SurgeBorder />
+        </InputContainer>
         <button type="submit" disabled={buttonState}>
           Join Chat
         </button>
       </form>
-      <h2>Waiting Users:</h2>
-      <ul>
-        {waitingUsers.map((user, index) => (
-          <li key={index}>{user}</li>
-        ))}
-      </ul>
-    </div>
+      {waitingUsers.length > 0 && (
+        <>
+          <h2>Waiting Users</h2>
+          <ul>
+            {waitingUsers.map((user, index) => (
+              <li key={index}>{user} 🕳️</li>
+            ))}
+          </ul>
+        </>
+      )}
+    </Root>
   );
 };
 
