@@ -5,6 +5,7 @@ import { handleRetrySetup } from "../utils/retrySetup";
 import { handleLeaveRoom } from "../utils/leaveHandler";
 import { createPeerConnection } from "../utils/createPeerConnection";
 import { cleanupVideoChat } from "../utils/cleanup";
+import Root from "./StyledVidRoom";
 
 const socket = io("https://server-0w31.onrender.com");
 
@@ -298,7 +299,7 @@ const VideoChat = () => {
   }, [roomId, location.state?.isInitiator, navigate, partnerAlias]); //might remove partnerAlias
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+    <Root>
       <h1 className="text-xl font-bold">Video Chat with {partnerAlias}</h1>
       {isLoading && <p>Initializing video chat...</p>}
       {mediaError && <p className="text-red-500">Error: {mediaError}</p>}
@@ -306,28 +307,28 @@ const VideoChat = () => {
         Connection State: {rtcState.connectionState}
       </p>
       <div className="flex gap-4">
-        <div className="relative">
+        <div className="local-vid-wrapper">
           <video
             controls
+            // src="/public/theOne.mov"
             ref={localVideoRef}
             autoPlay
             muted
             playsInline
             className="w-64 h-48 bg-gray-200 rounded"
           />
-          <p className="absolute bottom-2 left-2 text-white text-sm">You</p>
+          <p>You</p>
         </div>
-        <div className="relative">
+        <div className="remote-vid-wrapper">
           <video
             controls
+            // src="/public/candle.mp4"
             ref={remoteVideoRef}
             autoPlay
             playsInline
             className="w-64 h-48 bg-gray-200 rounded"
           />
-          <p className="absolute bottom-2 left-2 text-white text-sm">
-            {partnerAlias}
-          </p>
+          <p>{partnerAlias}</p>
         </div>
       </div>
       <button
@@ -348,7 +349,7 @@ const VideoChat = () => {
       >
         Leave Chat
       </button>
-    </div>
+    </Root>
   );
 };
 
