@@ -3,15 +3,11 @@ import styled, { keyframes } from 'styled-components';
 
 const surgeAnimation = keyframes`
 
- 15% {
-    clip-path: inset(90% 0 0 0);
-  }
- 50% {
-    clip-path: inset(0 0 90% 0);
-  }
- 100% {
-    clip-path: inset(0 0 0 0);
-  }
+ 0% { clip-path: inset(0 99% 99% 0); }
+  25% { clip-path: inset(0 0 90% 90%); }
+  50% { clip-path: inset(99% 0 0 90%); }
+  75% { clip-path: inset(90% 90% 0 0); }
+  100% { clip-path: inset(0 90% 99% 0); }
 `;
 
 export const InputContainer = styled.div`
@@ -59,8 +55,20 @@ export const SurgeBorder = styled.div`
     bottom: 0;
     border: 2px solid rgba(255, 255, 255, 0.5);
     border-radius: 25px;
-    clip-path: inset(0 0 0 0);
-    animation: ${surgeAnimation} 12s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+    clip-path: inset(0 90% 90% 0);
+    animation: ${surgeAnimation} 14s linear infinite;
+  }
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid turquoise;
+    border-radius: 25px;
+    clip-path: inset(0 99% 99% 0);
+    animation: ${surgeAnimation} 14s reverse infinite linear;
   }
 `;
 
@@ -90,4 +98,4 @@ export const Root = styled.div`
         font-family: DMMono, "Courier New", Courier, monospace;
 }
 
-`//#4c4c4cde
+`
