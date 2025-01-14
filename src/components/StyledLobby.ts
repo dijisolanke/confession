@@ -17,6 +17,7 @@ export const InputContainer = styled.div`
 `;
 
 export const StyledInput = styled.input`
+text-align: center;
   width: 200px;
   padding: 10px 15px;
   background: black;
