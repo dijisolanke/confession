@@ -74,6 +74,13 @@ export const SurgeBorder = styled.div`
 
 export const Root = styled.div`
 
+span{
+    font-size: 9px;
+    display: inline-flex;
+    bottom: 24px;
+    position: relative;
+
+}
     color: #4c4c4cde;
 
     button{
