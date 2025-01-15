@@ -334,7 +334,7 @@ const VideoChat = () => {
         socket.emit("joinRoom", { roomId });
         console.log("Joined room:", roomId);
       } catch (error) {
-        console.error("Setup failed:", error);
+        console.error("Setup failed: ", error);
         setMediaError(error instanceof Error ? error.message : "Setup failed");
         retrySetup();
       }
