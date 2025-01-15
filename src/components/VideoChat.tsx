@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useReducer, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
+import { Play } from "lucide-react"; // Import Play icon
 
 import { Root, Overlay, VideoItem } from "./StyledVidRoom";
 
@@ -61,14 +62,54 @@ const VideoChat = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+
+  const [showPlayButton, setShowPlayButton] = useState(false);
+  const playButtonTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoplayAttemptsRef = useRef(0);
+  const maxAutoplayAttempts = 3;
+
   const [countdown, setCountdown] = useState(3);
 
-  const handleMediaPermissionDenied = useCallback(() => {
-    setMediaError("Media permission denied, returning to lobby");
-    console.log("Media permission denied, returning to lobby");
-    const timeoutId = setTimeout(() => navigate("/"), 3000);
-    return () => clearTimeout(timeoutId);
-  }, [navigate]);
+  const attemptAutoplay = async (videoElement: HTMLVideoElement) => {
+    if (!videoElement || autoplayAttemptsRef.current >= maxAutoplayAttempts)
+      return;
+
+    try {
+      if (videoElement.paused) {
+        const playPromise = videoElement.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+          console.log("Autoplay successful");
+          setShowPlayButton(false);
+          autoplayAttemptsRef.current = 0;
+        }
+      }
+    } catch (error) {
+      console.log("Autoplay attempt failed:", error);
+      autoplayAttemptsRef.current++;
+
+      if (autoplayAttemptsRef.current < maxAutoplayAttempts) {
+        // Retry with exponential backoff
+        setTimeout(() => {
+          attemptAutoplay(videoElement);
+        }, 1000 * Math.pow(2, autoplayAttemptsRef.current));
+      }
+    }
+  };
+
+  const handleManualPlay = () => {
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current
+        .play()
+        .then(() => {
+          setShowPlayButton(false);
+          console.log("Manual play successful");
+        })
+        .catch((error) => {
+          console.log("Manual play failed:", error);
+        });
+    }
+  };
 
   const retrySetup = () => {
     if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
@@ -176,6 +217,20 @@ const VideoChat = () => {
         });
         if (remoteVideoRef.current && event.streams[0]) {
           remoteVideoRef.current.srcObject = event.streams[0];
+
+          // Reset autoplay attempts
+          autoplayAttemptsRef.current = 0;
+
+          // Initial autoplay attempt
+          attemptAutoplay(remoteVideoRef.current);
+
+          // Set timeout for play button
+          playButtonTimeoutRef.current = setTimeout(() => {
+            if (remoteVideoRef.current?.paused) {
+              setShowPlayButton(true);
+            }
+          }, 3000);
+
           console.log("Set remote video stream:", {
             streamId: event.streams[0].id,
             tracks: event.streams[0].getTracks().length,
@@ -423,13 +478,16 @@ const VideoChat = () => {
     socket.on("answer", handleAnswer);
     socket.on("ice-candidate", handleIceCandidate);
     socket.on("partnerLeft", handlePartnerLeft);
-    socket.on("mediaPermissionDenied", handleMediaPermissionDenied);
 
     setupCall();
 
     return () => {
       isComponentMounted = false;
       console.log("Cleaning up...");
+
+      if (playButtonTimeoutRef.current) {
+        clearTimeout(playButtonTimeoutRef.current);
+      }
 
       setRetryCount(0);
 
@@ -485,7 +543,7 @@ const VideoChat = () => {
 
       // Remove socket listeners
       handleLeaveRoom();
-      socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
+
       socket.off("partnerLeft");
       socket.off("turnCredentials");
       socket.off("offer");
@@ -493,14 +551,7 @@ const VideoChat = () => {
       socket.off("ice-candidate");
       socket.disconnect(); // Properly disconnect socket
     };
-  }, [
-    roomId,
-    location.state?.isInitiator,
-    navigate,
-    partnerAlias,
-    handleMediaPermissionDenied,
-    mediaError,
-  ]); //might remove partnerAlias
+  }, [roomId, location.state?.isInitiator, navigate, partnerAlias, mediaError]); //might remove partnerAlias
 
   return (
     <Root>
@@ -536,6 +587,14 @@ const VideoChat = () => {
             playsInline
             className="w-64 h-48 bg-gray-200 rounded"
           />
+          {showPlayButton && (
+            <button
+              onClick={handleManualPlay}
+              className="absolute inset-0 m-auto w-12 h-12 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+            >
+              <Play className="text-white" size={24} />
+            </button>
+          )}
           <p>{partnerAlias}</p>
         </VideoItem>
       </div>
