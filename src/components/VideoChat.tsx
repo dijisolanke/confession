@@ -384,6 +384,12 @@ const VideoChat = () => {
       }
     };
 
+    const handleMediaPermissionDenied = () => {
+      setMediaError("Media permission denied, returning to lobby");
+      console.log("Media permission denied, returning to lobby");
+      navigate("/");
+    };
+
     const handlePartnerLeft = () => {
       console.log("Partner left the room");
       if (peerConnectionRef.current) {
@@ -402,6 +408,7 @@ const VideoChat = () => {
     socket.on("answer", handleAnswer);
     socket.on("ice-candidate", handleIceCandidate);
     socket.on("partnerLeft", handlePartnerLeft);
+    socket.on("mediaPermissionDenied", handleMediaPermissionDenied);
 
     setupCall();
 
@@ -463,6 +470,7 @@ const VideoChat = () => {
 
       // Remove socket listeners
       handleLeaveRoom();
+      socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
       socket.off("partnerLeft");
       socket.off("turnCredentials");
       socket.off("offer");
