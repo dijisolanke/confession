@@ -119,4 +119,25 @@ const Overlay = styled.div<OverlayProps>`
   z-index: 3;
 `;
 
-export { Root, Overlay, VideoItem };
+const Button = styled.button`
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  margin: auto;
+  width: 3rem; /* 48px */
+  height: 3rem; /* 48px */
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  :hover {
+    background-color: rgba(0, 0, 0, 0.7);
+    transition: background-color 0.2s;
+  }
+`;
+
+export { Root, Overlay, VideoItem, Button };

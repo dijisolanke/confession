@@ -3,7 +3,7 @@ import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { Play } from "lucide-react"; // Import Play icon
 
-import { Root, Overlay, VideoItem } from "./StyledVidRoom";
+import { Root, Overlay, VideoItem, Button } from "./StyledVidRoom";
 
 import backgroundImage from "/china.webp";
 
@@ -588,12 +588,9 @@ const VideoChat = () => {
             className="w-64 h-48 bg-gray-200 rounded"
           />
           {showPlayButton && (
-            <button
-              onClick={handleManualPlay}
-              className="absolute inset-0 m-auto w-12 h-12 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
-            >
+            <Button onClick={handleManualPlay}>
               <Play className="text-white" size={24} />
-            </button>
+            </Button>
           )}
           <p>{partnerAlias}</p>
         </VideoItem>
