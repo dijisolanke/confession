@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, useReducer, useCallback } from "react";
+import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 
-import { Root, Overlay, VideoItem } from "./StyledVidRoom";
+import { Root, Overlay, VideoItem, Button } from "./StyledVidRoom";
 
 import backgroundImage from "/china.webp";
+import { Play } from "lucide-react";
 
 const socket = io("https://server-0w31.onrender.com");
 
@@ -63,12 +64,29 @@ const VideoChat = () => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [countdown, setCountdown] = useState(3);
 
-  const handleMediaPermissionDenied = useCallback(() => {
-    setMediaError("Media permission denied, returning to lobby");
-    console.log("Media permission denied, returning to lobby");
-    const timeoutId = setTimeout(() => navigate("/"), 3000);
-    return () => clearTimeout(timeoutId);
-  }, [navigate]);
+  const [showPlayButton, setShowPlayButton] = useState(false);
+
+  const handleManualPlay = () => {
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current
+        .play()
+        .then(() => {
+          setShowPlayButton(false);
+          console.log("Manual play successful");
+        })
+        .catch((error) => {
+          console.log("Manual play failed:", error);
+          setMediaError(`Manual play failed: ${error}`);
+        });
+    }
+  };
+
+  // const handleMediaPermissionDenied = useCallback(() => {
+  //   setMediaError("Media permission denied, returning to lobby");
+  //   console.log("Media permission denied, returning to lobby");
+  //   const timeoutId = setTimeout(() => navigate("/"), 3000);
+  //   return () => clearTimeout(timeoutId);
+  // }, [navigate]);
 
   const retrySetup = () => {
     if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
@@ -189,7 +207,7 @@ const VideoChat = () => {
                 "Autoplay was prevented. User interaction may be needed.",
                 error
               );
-              // TODO UI here to prompt the user to interact
+              setShowPlayButton(false);
             });
           }
           // Ensure both streams are established before setting callEstablished
@@ -250,16 +268,20 @@ const VideoChat = () => {
 
   useEffect(() => {
     if (mediaError) {
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(timer);
+      console.log("1Media permission Check", mediaError);
+      if (mediaError === "Media permission denied, returning to lobby") {
+        console.log("2Media permission Check", mediaError);
+        const timer = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(timer);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        return () => clearInterval(timer);
+      }
     }
 
     let isComponentMounted = true;
@@ -423,7 +445,7 @@ const VideoChat = () => {
     socket.on("answer", handleAnswer);
     socket.on("ice-candidate", handleIceCandidate);
     socket.on("partnerLeft", handlePartnerLeft);
-    socket.on("mediaPermissionDenied", handleMediaPermissionDenied);
+    // socket.on("mediaPermissionDenied", handleMediaPermissionDenied);
 
     setupCall();
 
@@ -485,7 +507,7 @@ const VideoChat = () => {
 
       // Remove socket listeners
       handleLeaveRoom();
-      socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
+      // socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
       socket.off("partnerLeft");
       socket.off("turnCredentials");
       socket.off("offer");
@@ -498,8 +520,8 @@ const VideoChat = () => {
     location.state?.isInitiator,
     navigate,
     partnerAlias,
-    handleMediaPermissionDenied,
-    mediaError,
+    // handleMediaPermissionDenied,
+    // mediaError,
   ]); //might remove partnerAlias
 
   return (
@@ -507,7 +529,9 @@ const VideoChat = () => {
       <h1 className="text-xl font-bold">Video Chat with {partnerAlias}</h1>
       {isLoading && <p>Initializing video chat...</p>}
       {/* {mediaError && <p className="text-red-500">Error: {mediaError}</p>} */}
-      {mediaError && <p>Redirecting to lobby in {countdown} seconds...</p>}
+      {mediaError === "Media permission denied, returning to lobby" && (
+        <p>Redirecting to lobby in {countdown} seconds...</p>
+      )}
       <p className="text-sm text-gray-600">
         Connection State: {rtcState.connectionState}
       </p>
@@ -536,6 +560,11 @@ const VideoChat = () => {
             playsInline
             className="w-64 h-48 bg-gray-200 rounded"
           />
+          {showPlayButton && (
+            <Button onClick={handleManualPlay}>
+              <Play className="text-white" size={24} />
+            </Button>
+          )}
           <p>{partnerAlias}</p>
         </VideoItem>
       </div>
