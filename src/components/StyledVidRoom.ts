@@ -83,6 +83,7 @@ const Root = styled.div`
 const VideoItem = styled.div`
   position: relative;
   width: 40vw;
+  height: 40vh
   /* height: auto;
     width: auto; */
   /* height: 52vh;
