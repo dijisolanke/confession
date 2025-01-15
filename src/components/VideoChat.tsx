@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useReducer } from "react";
+import { useEffect, useRef, useState, useReducer, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 
@@ -61,6 +61,14 @@ const VideoChat = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+
+  const handleMediaPermissionDenied = useCallback(() => {
+    setMediaError("Media permission denied, returning to lobby");
+    console.log("Media permission denied, returning to lobby");
+    const timeoutId = setTimeout(() => navigate("/"), 3000);
+    return () => clearTimeout(timeoutId);
+  }, [navigate]);
 
   const retrySetup = () => {
     if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
@@ -241,6 +249,19 @@ const VideoChat = () => {
   };
 
   useEffect(() => {
+    if (mediaError) {
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+
     let isComponentMounted = true;
 
     const handleLeaveRoom = () => {
@@ -384,12 +405,6 @@ const VideoChat = () => {
       }
     };
 
-    const handleMediaPermissionDenied = () => {
-      setMediaError("Media permission denied, returning to lobby");
-      console.log("Media permission denied, returning to lobby");
-      navigate("/");
-    };
-
     const handlePartnerLeft = () => {
       console.log("Partner left the room");
       if (peerConnectionRef.current) {
@@ -478,13 +493,21 @@ const VideoChat = () => {
       socket.off("ice-candidate");
       socket.disconnect(); // Properly disconnect socket
     };
-  }, [roomId, location.state?.isInitiator, navigate, partnerAlias]); //might remove partnerAlias
+  }, [
+    roomId,
+    location.state?.isInitiator,
+    navigate,
+    partnerAlias,
+    handleMediaPermissionDenied,
+    mediaError,
+  ]); //might remove partnerAlias
 
   return (
     <Root>
       <h1 className="text-xl font-bold">Video Chat with {partnerAlias}</h1>
       {isLoading && <p>Initializing video chat...</p>}
-      {mediaError && <p className="text-red-500">Error: {mediaError}</p>}
+      {/* {mediaError && <p className="text-red-500">Error: {mediaError}</p>} */}
+      {mediaError && <p>Redirecting to lobby in {countdown} seconds...</p>}
       <p className="text-sm text-gray-600">
         Connection State: {rtcState.connectionState}
       </p>
