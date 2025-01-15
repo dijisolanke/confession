@@ -172,6 +172,18 @@ const VideoChat = () => {
             streamId: event.streams[0].id,
             tracks: event.streams[0].getTracks().length,
           });
+
+          // Add this block to attempt autoplay
+          const playPromise = remoteVideoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((error) => {
+              console.log(
+                "Autoplay was prevented. User interaction may be needed.",
+                error
+              );
+              // TODO UI here to prompt the user to interact
+            });
+          }
           // Ensure both streams are established before setting callEstablished
           if (
             localVideoRef.current?.srcObject instanceof MediaStream &&
