@@ -207,7 +207,7 @@ const VideoChat = () => {
                 "Autoplay was prevented. User interaction may be needed.",
                 error
               );
-              setShowPlayButton(false);
+              setShowPlayButton(true);
             });
           }
           // Ensure both streams are established before setting callEstablished
