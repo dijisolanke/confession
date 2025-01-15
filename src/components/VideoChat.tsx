@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useReducer } from "react";
+import { useEffect, useRef, useState, useReducer, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { Play } from "lucide-react"; // Import Play icon
@@ -69,6 +69,60 @@ const VideoChat = () => {
   const maxAutoplayAttempts = 3;
 
   const [countdown, setCountdown] = useState(3);
+
+  const cleanupConnection = useCallback(() => {
+    console.log("Cleaning up connection...");
+
+    // Clear timeouts
+    if (playButtonTimeoutRef.current) {
+      clearTimeout(playButtonTimeoutRef.current);
+    }
+
+    // Clean up local stream
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped local track:", track.kind);
+      });
+      localStreamRef.current = null;
+    }
+
+    // Clean up remote stream
+    if (remoteVideoRef.current?.srcObject instanceof MediaStream) {
+      const remoteStream = remoteVideoRef.current.srcObject;
+      remoteStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped remote track:", track.kind);
+      });
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    // Clean up peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.getTransceivers().forEach((transceiver) => {
+        if (transceiver.stop) {
+          transceiver.stop();
+        }
+      });
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    // Clean up video elements
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+  }, []);
+
+  const handleLeaveRoom = useCallback(() => {
+    console.log("Handling leave room...");
+    socket.emit("leaveRoom");
+    cleanupConnection();
+    navigate("/");
+  }, [navigate, cleanupConnection]);
 
   const attemptAutoplay = async (videoElement: HTMLVideoElement) => {
     if (!videoElement || autoplayAttemptsRef.current >= maxAutoplayAttempts)
@@ -201,10 +255,14 @@ const VideoChat = () => {
           !isRetrying
         ) {
           console.log("Connection failed, closing peer connection...");
-          pc.close();
+          cleanupConnection();
           retrySetup();
-        } else if (pc.connectionState === "closed") {
-          navigate("/");
+        } else if (
+          pc.connectionState === "closed" ||
+          pc.connectionState === "disconnected"
+        ) {
+          console.log("Connection closed or disconnected");
+          handleLeaveRoom();
         }
       };
 
@@ -307,22 +365,6 @@ const VideoChat = () => {
     }
 
     let isComponentMounted = true;
-
-    const handleLeaveRoom = () => {
-      if (peerConnectionRef.current) {
-        socket.emit("leaveRoom");
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-      // Clean up video tracks
-      if (localVideoRef.current?.srcObject instanceof MediaStream) {
-        localVideoRef.current.srcObject
-          .getTracks()
-          .forEach((track) => track.stop());
-      }
-      navigate("/");
-      window.location.reload();
-    };
 
     console.log("VideoChat mounted with:", {
       roomId,
@@ -451,12 +493,7 @@ const VideoChat = () => {
 
     const handlePartnerLeft = () => {
       console.log("Partner left the room");
-      if (peerConnectionRef.current) {
-        peerConnectionRef.current.close();
-      }
-      navigate("/");
-      window.location.reload();
-      console.log("page reloaded!");
+      handleLeaveRoom();
     };
 
     socket.emit("requestTurnCredentials");
@@ -473,6 +510,8 @@ const VideoChat = () => {
     return () => {
       isComponentMounted = false;
       console.log("Cleaning up...");
+
+      cleanupConnection();
 
       if (playButtonTimeoutRef.current) {
         clearTimeout(playButtonTimeoutRef.current);
@@ -540,7 +579,15 @@ const VideoChat = () => {
       socket.off("ice-candidate");
       socket.disconnect(); // Properly disconnect socket
     };
-  }, [roomId, location.state?.isInitiator, navigate, partnerAlias, mediaError]); //might remove partnerAlias
+  }, [
+    roomId,
+    location.state?.isInitiator,
+    navigate,
+    partnerAlias,
+    mediaError,
+    handleLeaveRoom,
+    cleanupConnection,
+  ]); //might remove partnerAlias
 
   return (
     <Root>
@@ -585,19 +632,7 @@ const VideoChat = () => {
         </VideoItem>
       </div>
       <button
-        onClick={() => {
-          if (localVideoRef.current?.srcObject instanceof MediaStream) {
-            localVideoRef.current.srcObject
-              .getTracks()
-              .forEach((track) => track.stop());
-          }
-          if (peerConnectionRef.current) {
-            peerConnectionRef.current.close();
-          }
-          socket.emit("leaveRoom"); // Add this line
-          navigate("/");
-          window.location.reload();
-        }}
+        onClick={handleLeaveRoom}
         className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
       >
         Leave Chat
