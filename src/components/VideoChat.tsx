@@ -441,7 +441,7 @@ const VideoChat = () => {
       answer: RTCSessionDescriptionInit;
       from: string;
     }) => {
-      // console.log("Received answer from:", from);
+      console.log("Received answer from:", from);
       if (peerConnectionRef.current) {
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(answer)
