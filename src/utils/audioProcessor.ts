@@ -6,6 +6,7 @@ export class AudioProcessor {
 
   setupAudioProcessing(stream: MediaStream): MediaStream {
       console.log("Setting up audio processing");
+      console.log('streams',stream.getAudioTracks().length);
       
       try {
           // Create new context only when processing

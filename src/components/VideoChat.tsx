@@ -186,10 +186,41 @@ const VideoChat = () => {
         } else if (pc.connectionState === "closed") {
           navigate("/");
         }
+
+        console.log(
+          "Connection state:",
+          peerConnectionRef.current?.connectionState
+        );
+        console.log(
+          "ICE Connection state:",
+          peerConnectionRef.current?.iceConnectionState
+        );
+        console.log(
+          "Current transceivers:",
+          peerConnectionRef.current?.getTransceivers().map((t) => ({
+            mid: t.mid,
+            direction: t.direction,
+            currentDirection: t.currentDirection,
+          }))
+        );
       };
 
       // Handle incoming remote tracks
       pc.ontrack = (event) => {
+        if (event.track.kind === "audio") {
+          console.log("Received audio track:", {
+            id: event.track.id,
+            enabled: event.track.enabled,
+            muted: event.track.muted,
+            readyState: event.track.readyState,
+          });
+
+          // Check if the stream has audio tracks
+          const audioTracks = event.streams[0].getAudioTracks();
+          console.log("Number of audio tracks:", audioTracks.length);
+          console.log("Audio track settings:", audioTracks[0]?.getSettings());
+        }
+
         if (remoteVideoRef.current && event.streams[0]) {
           console.log("Received track:", event.track.kind);
 
@@ -213,6 +244,15 @@ const VideoChat = () => {
             event.track.kind === "audio" &&
             audioProcessorRef.current
           ) {
+            const audioContext = new AudioContext();
+            console.log("AudioContext state:", audioContext.state);
+            // If it shows 'suspended', autoplay policy is blocking
+
+            console.log(
+              "Remote video muted status:",
+              remoteVideoRef.current?.muted
+            );
+            console.log("Remote video volume:", remoteVideoRef.current?.volume);
             try {
               // Process new audio track
               const audioStream = new MediaStream([event.track]);
