@@ -243,7 +243,7 @@ const VideoChat = () => {
             const playPromise = remoteVideoRef.current.play();
             if (playPromise !== undefined) {
               playPromise.catch((error) => {
-                console.log("Autoplay prevented, showing play button");
+                console.log("Autoplay prevented, showing play button", error);
                 setShowPlayButton(true);
               });
             }
