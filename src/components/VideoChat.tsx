@@ -101,7 +101,7 @@ const VideoChat = () => {
         setIsRetrying(false);
       }, 2000);
     } else if (!mediaStreamsEstablished && retryCount >= 3) {
-      console.log("Max retry attempts reached. Call setup failed.");
+      // console.log("Max retry attempts reached. Call setup failed.");
       setMediaError("Failed to establish connection after multiple attempts.");
     }
   };
@@ -116,10 +116,10 @@ const VideoChat = () => {
         },
         audio: true,
       });
-      console.log("Media stream obtained:", {
-        videoTracks: stream.getVideoTracks().length,
-        audioTracks: stream.getAudioTracks().length,
-      });
+      // console.log("Media stream obtained:", {
+      //   videoTracks: stream.getVideoTracks().length,
+      //   audioTracks: stream.getAudioTracks().length,
+      // });
       localStreamRef.current = stream;
 
       if (localVideoRef.current) {
@@ -128,7 +128,7 @@ const VideoChat = () => {
       }
       return stream;
     } catch (error) {
-      console.error("Error accessing media devices:", error);
+      // console.error("Error accessing media devices:", error);
       throw error;
     }
   };
@@ -196,6 +196,8 @@ const VideoChat = () => {
         //   id: event.track.id,
         // });
         if (remoteVideoRef.current && event.streams[0]) {
+          console.log("Received track:", event.track.kind);
+
           // Create a new MediaStream to hold processed audio
           const processedStream = new MediaStream();
 
@@ -207,24 +209,36 @@ const VideoChat = () => {
 
           // Process audio tracks with fixed lower pitch
           if (event.track.kind === "audio") {
-            const audioStream = new MediaStream([event.track]);
-            const processedAudioStream =
-              audioProcessor.setupAudioProcessing(audioStream);
-            processedAudioStream.getAudioTracks().forEach((track) => {
-              processedStream.addTrack(track);
-            });
+            try {
+              const audioStream = new MediaStream([event.track]);
+              const processedAudioStream =
+                audioProcessor.setupAudioProcessing(audioStream);
+
+              // Replace the original audio track with processed one
+              processedStream.getAudioTracks().forEach((track) => {
+                processedStream.removeTrack(track);
+              });
+
+              processedAudioStream.getAudioTracks().forEach((track) => {
+                processedStream.addTrack(track);
+                console.log("Added processed audio track");
+              });
+            } catch (error) {
+              console.error("Audio processing failed:", error);
+              // Keep original audio if processing fails
+            }
           }
 
           remoteVideoRef.current.srcObject = processedStream;
-          console.log(
-            "2Check for Processed stream",
-            remoteVideoRef.current.srcObject
-          );
+          // console.log(
+          //   "2Check for Processed stream",
+          //   remoteVideoRef.current.srcObject
+          // );
 
-          console.log("Set remote video stream:", {
-            streamId: event.streams[0].id,
-            tracks: event.streams[0].getTracks().length,
-          });
+          // console.log("Set remote video stream:", {
+          //   streamId: event.streams[0].id,
+          //   tracks: event.streams[0].getTracks().length,
+          // });
 
           // Add this block to attempt autoplay
           const playPromise = remoteVideoRef.current.play();
@@ -294,13 +308,6 @@ const VideoChat = () => {
   };
 
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && audioProcessor) {
-        audioProcessor.resumeContext();
-      }
-    };
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-
     if (mediaError) {
       console.log("1Media permission Check", mediaError);
       if (mediaError === "Media permission denied, returning to lobby") {
@@ -336,11 +343,11 @@ const VideoChat = () => {
       window.location.reload();
     };
 
-    console.log("VideoChat mounted with:", {
-      roomId,
-      isInitiator: location.state?.isInitiator,
-      partnerAlias,
-    });
+    // console.log("VideoChat mounted with:", {
+    //   roomId,
+    //   isInitiator: location.state?.isInitiator,
+    //   partnerAlias,
+    // });
 
     const handleTurnCredentials = async (credentials: RTCIceServer[]) => {
       if (!isComponentMounted || mediaStreamsEstablished) {
@@ -357,10 +364,10 @@ const VideoChat = () => {
         const stream = await setupMediaStream();
         localStreamRef.current = stream; // This line was missing
 
-        console.log("Media stream obtained:", {
-          videoTracks: stream.getVideoTracks().length,
-          audioTracks: stream.getAudioTracks().length,
-        });
+        // console.log("Media stream obtained:", {
+        //   videoTracks: stream.getVideoTracks().length,
+        //   audioTracks: stream.getAudioTracks().length,
+        // });
 
         const pc = await createPeerConnection(credentials);
         peerConnectionRef.current = pc;
@@ -382,7 +389,7 @@ const VideoChat = () => {
       from: string;
     }) => {
       if (!peerConnectionRef.current) return;
-      console.log("Received offer from peer:", offer.type);
+      // console.log("Received offer from peer:", offer.type);
 
       const pc = peerConnectionRef.current;
       const offerCollision =
@@ -434,7 +441,7 @@ const VideoChat = () => {
       answer: RTCSessionDescriptionInit;
       from: string;
     }) => {
-      console.log("Received answer from:", from);
+      // console.log("Received answer from:", from);
       if (peerConnectionRef.current) {
         await peerConnectionRef.current.setRemoteDescription(
           new RTCSessionDescription(answer)
@@ -451,11 +458,11 @@ const VideoChat = () => {
     }) => {
       try {
         if (!peerConnectionRef.current) return;
-        console.log("Received ICE candidate:", candidate.candidate);
+        // console.log("Received ICE candidate:", candidate.candidate);
         await peerConnectionRef.current.addIceCandidate(
           new RTCIceCandidate(candidate)
         );
-        console.log("Successfully added ICE candidate");
+        // console.log("Successfully added ICE candidate");
       } catch (err) {
         console.error("Error adding ICE candidate:", err);
       }
@@ -506,7 +513,7 @@ const VideoChat = () => {
         const remoteStream = remoteVideoRef.current.srcObject;
         remoteStream.getTracks().forEach((track) => {
           track.stop();
-          console.log("Stopped remote track:", track.kind);
+          // console.log("Stopped remote track:", track.kind);
         });
         remoteVideoRef.current.srcObject = null;
       }
@@ -540,7 +547,6 @@ const VideoChat = () => {
       }
 
       audioProcessor.cleanup();
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
 
       // Remove socket listeners
       handleLeaveRoom();
