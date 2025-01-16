@@ -13,7 +13,13 @@ export class AudioProcessor {
     }
   
     setupAudioProcessing(stream: MediaStream): MediaStream {
-      // Clean up any existing processing chain
+    
+        // Ensure context is running
+     if (this.context.state === 'suspended') {
+        this.context.resume();
+      }
+      
+        // Clean up any existing processing chain
       this.cleanup();
   
       // Create nodes
@@ -22,15 +28,20 @@ export class AudioProcessor {
       
       // Create and configure pitch shifter for a lower voice
       this.pitchShifter = this.context.createBiquadFilter();
-      this.pitchShifter.type = 'allpass';
-      this.pitchShifter.frequency.value = 1000; // Base frequency
-      this.pitchShifter.Q.value = 1; // Quality factor
-      this.pitchShifter.detune.value = -200; // Lower pitch by 7 semitones
-      this.pitchShifter.gain.value = 0.4; // Seg gain to 40%
+      this.pitchShifter.type = 'lowshelf';
+      this.pitchShifter.frequency.value = 500; // Base frequency
+      this.pitchShifter.gain.value = 15
+
+      // Add a second filter for additional effect
+      const secondFilter = this.context.createBiquadFilter();
+      secondFilter.type = 'highshelf';
+      secondFilter.frequency.value = 1000;
+      secondFilter.gain.value = -10;  // Reduce higher frequencies
   
       // Connect the audio processing chain
       this.source
         .connect(this.pitchShifter)
+        .connect(secondFilter)
         .connect(this.destination);
   
       // Return the processed stream

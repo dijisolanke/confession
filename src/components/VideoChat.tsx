@@ -202,11 +202,8 @@ const VideoChat = () => {
           // Add video tracks directly
           event.streams[0].getVideoTracks().forEach((track) => {
             processedStream.addTrack(track);
+            console.log("Added video track:", track.id);
           });
-          console.log(
-            "1  Check for Processed stream",
-            remoteVideoRef.current.srcObject
-          );
 
           // Process audio tracks with fixed lower pitch
           if (event.track.kind === "audio") {
