@@ -22,10 +22,11 @@ export class AudioProcessor {
       
       // Create and configure pitch shifter for a lower voice
       this.pitchShifter = this.context.createBiquadFilter();
-      this.pitchShifter.type = 'highpass';
+      this.pitchShifter.type = 'allpass';
       this.pitchShifter.frequency.value = 1000; // Base frequency
       this.pitchShifter.Q.value = 1; // Quality factor
       this.pitchShifter.detune.value = -200; // Lower pitch by 7 semitones
+      this.pitchShifter.gain.value = 0.4; // Seg gain to 40%
   
       // Connect the audio processing chain
       this.source
