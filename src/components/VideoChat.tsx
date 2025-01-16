@@ -136,24 +136,24 @@ const VideoChat = () => {
   const createPeerConnection = async (iceServers: RTCIceServer[]) => {
     try {
       const pc = new RTCPeerConnection({ iceServers });
-      console.log("RTCPeerConnection created with ice servers:", iceServers);
+      // console.log("RTCPeerConnection created with ice servers:", iceServers);
 
       // Add local stream tracks to peer connection
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => {
           pc.addTrack(track, localStreamRef.current!);
-          console.log("Added local track to peer connection:", {
-            kind: track.kind,
-            enabled: track.enabled,
-            id: track.id,
-          });
+          // console.log("Added local track to peer connection:", {
+          //   kind: track.kind,
+          //   enabled: track.enabled,
+          //   id: track.id,
+          // });
         });
       }
 
       // Handle ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log("Sending ICE candidate to peer");
+          // console.log("Sending ICE candidate to peer");
           socket.emit("ice-candidate", {
             candidate: event.candidate,
             to: roomId,
@@ -163,14 +163,14 @@ const VideoChat = () => {
 
       // Log connection state changes
       pc.oniceconnectionstatechange = () => {
-        console.log("ICE connection state:", pc.iceConnectionState);
+        // console.log("ICE connection state:", pc.iceConnectionState);
         if (pc.iceConnectionState === "disconnected") {
           console.log("ICE connection disconnected, attempting restart...");
         }
       };
 
       pc.onconnectionstatechange = () => {
-        console.log("Connection state changed:", pc.connectionState);
+        // console.log("Connection state changed:", pc.connectionState);
         dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
 
         if (pc.connectionState === "connected") {
@@ -190,11 +190,11 @@ const VideoChat = () => {
 
       // Handle incoming remote tracks
       pc.ontrack = (event) => {
-        console.log("Received remote track:", {
-          kind: event.track.kind,
-          enabled: event.track.enabled,
-          id: event.track.id,
-        });
+        // console.log("Received remote track:", {
+        //   kind: event.track.kind,
+        //   enabled: event.track.enabled,
+        //   id: event.track.id,
+        // });
         if (remoteVideoRef.current && event.streams[0]) {
           // Create a new MediaStream to hold processed audio
           const processedStream = new MediaStream();
@@ -203,6 +203,10 @@ const VideoChat = () => {
           event.streams[0].getVideoTracks().forEach((track) => {
             processedStream.addTrack(track);
           });
+          console.log(
+            "1  Check for Processed stream",
+            remoteVideoRef.current.srcObject
+          );
 
           // Process audio tracks with fixed lower pitch
           if (event.track.kind === "audio") {
@@ -215,6 +219,11 @@ const VideoChat = () => {
           }
 
           remoteVideoRef.current.srcObject = processedStream;
+          console.log(
+            "2Check for Processed stream",
+            remoteVideoRef.current.srcObject
+          );
+
           console.log("Set remote video stream:", {
             streamId: event.streams[0].id,
             tracks: event.streams[0].getTracks().length,
