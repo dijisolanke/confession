@@ -6,6 +6,7 @@ import { Root, Overlay, VideoItem, Button } from "./StyledVidRoom";
 
 import backgroundImage from "/china.webp";
 import { Play } from "lucide-react";
+import { AudioProcessor } from "../utils/audioProcessor";
 
 const socket = io("https://server-0w31.onrender.com");
 
@@ -65,6 +66,8 @@ const VideoChat = () => {
   const [countdown, setCountdown] = useState(3);
 
   const [showPlayButton, setShowPlayButton] = useState(false);
+
+  const [audioProcessor] = useState(() => new AudioProcessor());
 
   const handleManualPlay = () => {
     if (remoteVideoRef.current) {
@@ -193,7 +196,25 @@ const VideoChat = () => {
           id: event.track.id,
         });
         if (remoteVideoRef.current && event.streams[0]) {
-          remoteVideoRef.current.srcObject = event.streams[0];
+          // Create a new MediaStream to hold processed audio
+          const processedStream = new MediaStream();
+
+          // Add video tracks directly
+          event.streams[0].getVideoTracks().forEach((track) => {
+            processedStream.addTrack(track);
+          });
+
+          // Process audio tracks with fixed lower pitch
+          if (event.track.kind === "audio") {
+            const audioStream = new MediaStream([event.track]);
+            const processedAudioStream =
+              audioProcessor.setupAudioProcessing(audioStream);
+            processedAudioStream.getAudioTracks().forEach((track) => {
+              processedStream.addTrack(track);
+            });
+          }
+
+          remoteVideoRef.current.srcObject = processedStream;
           console.log("Set remote video stream:", {
             streamId: event.streams[0].id,
             tracks: event.streams[0].getTracks().length,
@@ -504,6 +525,8 @@ const VideoChat = () => {
       } catch (err) {
         console.log("Could not reset permissions");
       }
+
+      audioProcessor.cleanup();
 
       // Remove socket listeners
       handleLeaveRoom();
