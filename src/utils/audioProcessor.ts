@@ -1,5 +1,5 @@
 export class AudioProcessor {
-    private context: AudioContext;
+    private context: AudioContext ;
     private source: MediaStreamAudioSourceNode | null = null;
     private destination: MediaStreamAudioDestinationNode | null = null;
     private pitchShifter: BiquadFilterNode | null = null;
@@ -15,7 +15,7 @@ export class AudioProcessor {
   
 
     public resumeContext() {
-        if (this.context.state === 'suspended') {
+        if (this.context?.state === 'suspended') {
         this.context.resume();
         }
     }

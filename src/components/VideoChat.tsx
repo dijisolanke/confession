@@ -67,7 +67,7 @@ const VideoChat = () => {
 
   const [showPlayButton, setShowPlayButton] = useState(false);
 
-  const [audioProcessor] = useState(() => new AudioProcessor());
+  const audioProcessorRef = useRef<AudioProcessor | null>(null);
 
   const handleManualPlay = () => {
     if (remoteVideoRef.current) {
@@ -116,10 +116,11 @@ const VideoChat = () => {
         },
         audio: true,
       });
-      // console.log("Media stream obtained:", {
-      //   videoTracks: stream.getVideoTracks().length,
-      //   audioTracks: stream.getAudioTracks().length,
-      // });
+      // Initialize audio processor once
+      if (!audioProcessorRef.current) {
+        audioProcessorRef.current = new AudioProcessor();
+      }
+
       localStreamRef.current = stream;
 
       if (localVideoRef.current) {
@@ -128,7 +129,6 @@ const VideoChat = () => {
       }
       return stream;
     } catch (error) {
-      // console.error("Error accessing media devices:", error);
       throw error;
     }
   };
@@ -190,89 +190,73 @@ const VideoChat = () => {
 
       // Handle incoming remote tracks
       pc.ontrack = (event) => {
-        // console.log("Received remote track:", {
-        //   kind: event.track.kind,
-        //   enabled: event.track.enabled,
-        //   id: event.track.id,
-        // });
         if (remoteVideoRef.current && event.streams[0]) {
           console.log("Received track:", event.track.kind);
 
-          // Create a new MediaStream to hold processed audio
-          const processedStream = new MediaStream();
+          // Use a single processed stream
+          if (!remoteVideoRef.current.srcObject) {
+            const processedStream = new MediaStream();
+            remoteVideoRef.current.srcObject = processedStream;
+          }
 
-          // Add video tracks directly
-          event.streams[0].getVideoTracks().forEach((track) => {
-            processedStream.addTrack(track);
-            console.log("Added video track:", track.id);
-          });
+          const processedStream = remoteVideoRef.current
+            .srcObject as MediaStream;
 
-          // Process audio tracks with fixed lower pitch
-          if (event.track.kind === "audio") {
+          if (event.track.kind === "video") {
+            // Replace existing video track if any
+            const oldVideoTracks = processedStream.getVideoTracks();
+            oldVideoTracks.forEach((track) =>
+              processedStream.removeTrack(track)
+            );
+            processedStream.addTrack(event.track);
+          } else if (
+            event.track.kind === "audio" &&
+            audioProcessorRef.current
+          ) {
             try {
+              // Process new audio track
               const audioStream = new MediaStream([event.track]);
               const processedAudioStream =
-                audioProcessor.setupAudioProcessing(audioStream);
+                audioProcessorRef.current.setupAudioProcessing(audioStream);
 
-              // Replace the original audio track with processed one
-              processedStream.getAudioTracks().forEach((track) => {
-                processedStream.removeTrack(track);
-              });
+              // Replace existing audio track if any
+              const oldAudioTracks = processedStream.getAudioTracks();
+              oldAudioTracks.forEach((track) =>
+                processedStream.removeTrack(track)
+              );
 
               processedAudioStream.getAudioTracks().forEach((track) => {
                 processedStream.addTrack(track);
-                console.log("Added processed audio track");
               });
             } catch (error) {
               console.error("Audio processing failed:", error);
-              // Keep original audio if processing fails
+              // Fallback to original audio if processing fails
+              processedStream.addTrack(event.track);
             }
           }
 
-          remoteVideoRef.current.srcObject = processedStream;
-          // console.log(
-          //   "2Check for Processed stream",
-          //   remoteVideoRef.current.srcObject
-          // );
-
-          // console.log("Set remote video stream:", {
-          //   streamId: event.streams[0].id,
-          //   tracks: event.streams[0].getTracks().length,
-          // });
-
-          // Add this block to attempt autoplay
-          const playPromise = remoteVideoRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise.catch((error) => {
-              console.log(
-                "Autoplay was prevented. User interaction may be needed.",
-                error
-              );
-              setShowPlayButton(true);
-            });
+          // Handle autoplay
+          if (
+            remoteVideoRef.current.paused &&
+            remoteVideoRef.current.readyState > 2
+          ) {
+            const playPromise = remoteVideoRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch((error) => {
+                console.log("Autoplay prevented, showing play button");
+                setShowPlayButton(true);
+              });
+            }
           }
-          // Ensure both streams are established before setting callEstablished
+
+          // Check for established connection
           if (
             localVideoRef.current?.srcObject instanceof MediaStream &&
-            remoteVideoRef.current.srcObject instanceof MediaStream
+            processedStream.getTracks().length >= 2
           ) {
-            const localStream = localVideoRef.current.srcObject;
-            const remoteStream = remoteVideoRef.current.srcObject;
-
-            // Verify both streams have active audio and video tracks
-            const hasLocalTracks =
-              localStream.getVideoTracks().some((track) => track.enabled) &&
-              localStream.getAudioTracks().some((track) => track.enabled);
-            const hasRemoteTracks =
-              remoteStream.getVideoTracks().some((track) => track.enabled) &&
-              remoteStream.getAudioTracks().some((track) => track.enabled);
-
-            if (hasLocalTracks && hasRemoteTracks) {
-              setMediaStreamsEstablished(true);
-              setIsLoading(false);
-              // Reset retry count since connection is successful
-              setRetryCount(0);
-            }
+            setMediaStreamsEstablished(true);
+            setIsLoading(false);
+            setRetryCount(0);
           }
         }
       };
@@ -546,7 +530,10 @@ const VideoChat = () => {
         console.log("Could not reset permissions");
       }
 
-      audioProcessor.cleanup();
+      if (audioProcessorRef.current) {
+        audioProcessorRef.current.cleanup();
+        audioProcessorRef.current = null;
+      }
 
       // Remove socket listeners
       handleLeaveRoom();
