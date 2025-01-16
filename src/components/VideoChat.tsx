@@ -294,6 +294,13 @@ const VideoChat = () => {
   };
 
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && audioProcessor) {
+        audioProcessor.resumeContext();
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     if (mediaError) {
       console.log("1Media permission Check", mediaError);
       if (mediaError === "Media permission denied, returning to lobby") {
@@ -533,10 +540,10 @@ const VideoChat = () => {
       }
 
       audioProcessor.cleanup();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
 
       // Remove socket listeners
       handleLeaveRoom();
-      // socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
       socket.off("partnerLeft");
       socket.off("turnCredentials");
       socket.off("offer");
@@ -544,14 +551,7 @@ const VideoChat = () => {
       socket.off("ice-candidate");
       socket.disconnect(); // Properly disconnect socket
     };
-  }, [
-    roomId,
-    location.state?.isInitiator,
-    navigate,
-    partnerAlias,
-    // handleMediaPermissionDenied,
-    // mediaError,
-  ]); //might remove partnerAlias
+  }, [roomId, location.state?.isInitiator, navigate, partnerAlias]); //might remove partnerAlias
 
   return (
     <Root>

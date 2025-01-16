@@ -12,6 +12,13 @@ export class AudioProcessor {
       });
     }
   
+
+    public resumeContext() {
+        if (this.context.state === 'suspended') {
+        this.context.resume();
+        }
+    }
+
     setupAudioProcessing(stream: MediaStream): MediaStream {
     
         // Ensure context is running
