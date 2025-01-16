@@ -25,7 +25,7 @@ export class AudioProcessor {
       this.pitchShifter.type = 'highpass';
       this.pitchShifter.frequency.value = 1000; // Base frequency
       this.pitchShifter.Q.value = 1; // Quality factor
-      this.pitchShifter.detune.value = -700; // Lower pitch by 7 semitones
+      this.pitchShifter.detune.value = -200; // Lower pitch by 7 semitones
   
       // Connect the audio processing chain
       this.source
