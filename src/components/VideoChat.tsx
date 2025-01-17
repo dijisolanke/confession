@@ -202,24 +202,26 @@ const VideoChat = () => {
           if (remoteVideoRef.current && event.streams[0]) {
             const originalStream = event.streams[0];
             const processedStream = new MediaStream();
-
-            // Add video tracks directly
-            originalStream.getVideoTracks().forEach((track) => {
-              processedStream.addTrack(track);
-            });
-
-            // Process and add audio tracks
-            if (
-              originalStream.getAudioTracks().length > 0 &&
-              audioProcessor.current
-            ) {
-              const processedAudioStream =
-                await audioProcessor.current.processStream(originalStream, {
-                  pitchShiftAmount: -400,
+            // Handle audio tracks first if present
+            if (event.track.kind === "audio" && audioProcessor.current) {
+              try {
+                const processedAudioStream =
+                  await audioProcessor.current.processStream(originalStream, {
+                    pitchShiftAmount: -400,
+                  });
+                processedAudioStream.getAudioTracks().forEach((track) => {
+                  processedStream.addTrack(track);
                 });
-              processedAudioStream.getAudioTracks().forEach((track) => {
-                processedStream.addTrack(track);
-              });
+              } catch (error) {
+                console.error("Failed to process audio track:", error);
+                // Fallback to original audio track if processing fails
+                originalStream.getAudioTracks().forEach((track) => {
+                  processedStream.addTrack(track);
+                });
+              }
+            } else {
+              // For video tracks or if audio processing fails, add directly
+              processedStream.addTrack(event.track);
             }
 
             remoteVideoRef.current.srcObject = processedStream;
@@ -303,9 +305,10 @@ const VideoChat = () => {
   useEffect(() => {
     const initProcessor = async () => {
       try {
-        audioProcessor.current = new AudioStreamProcessor();
-        // Pre-initialize the processor
-        await audioProcessor.current.initialize();
+        const processor = new AudioStreamProcessor();
+        // Initialize immediately
+        await processor.initialize();
+        audioProcessor.current = processor;
       } catch (error) {
         console.error("Failed to initialize audio processor:", error);
       }
