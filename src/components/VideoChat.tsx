@@ -198,7 +198,7 @@ const VideoChat = () => {
           enabled: event.track.enabled,
           id: event.track.id,
         });
-        if (remoteVideoRef.current && event.streams[0]) {
+        try {
           if (remoteVideoRef.current && event.streams[0]) {
             const originalStream = event.streams[0];
             const processedStream = new MediaStream();
@@ -223,47 +223,50 @@ const VideoChat = () => {
             }
 
             remoteVideoRef.current.srcObject = processedStream;
-          }
 
-          console.log("Set remote video stream:", {
-            streamId: event.streams[0].id,
-            tracks: event.streams[0].getTracks().length,
-          });
-
-          // Add this block to attempt autoplay
-          const playPromise = remoteVideoRef.current.play();
-          if (playPromise !== undefined) {
-            playPromise.catch((error) => {
-              console.log(
-                "Autoplay was prevented. User interaction may be needed.",
-                error
-              );
-              setShowPlayButton(true);
+            console.log("Set remote video stream:", {
+              streamId: event.streams[0].id,
+              tracks: event.streams[0].getTracks().length,
             });
-          }
-          // Ensure both streams are established before setting callEstablished
-          if (
-            localVideoRef.current?.srcObject instanceof MediaStream &&
-            remoteVideoRef.current.srcObject instanceof MediaStream
-          ) {
-            const localStream = localVideoRef.current.srcObject;
-            const remoteStream = remoteVideoRef.current.srcObject;
 
-            // Verify both streams have active audio and video tracks
-            const hasLocalTracks =
-              localStream.getVideoTracks().some((track) => track.enabled) &&
-              localStream.getAudioTracks().some((track) => track.enabled);
-            const hasRemoteTracks =
-              remoteStream.getVideoTracks().some((track) => track.enabled) &&
-              remoteStream.getAudioTracks().some((track) => track.enabled);
+            // Add this block to attempt autoplay
+            const playPromise = remoteVideoRef.current.play();
+            if (playPromise !== undefined) {
+              playPromise.catch((error) => {
+                console.log(
+                  "Autoplay was prevented. User interaction may be needed.",
+                  error
+                );
+                setShowPlayButton(true);
+              });
+            }
+            // Ensure both streams are established before setting callEstablished
+            if (
+              localVideoRef.current?.srcObject instanceof MediaStream &&
+              remoteVideoRef.current.srcObject instanceof MediaStream
+            ) {
+              const localStream = localVideoRef.current.srcObject;
+              const remoteStream = remoteVideoRef.current.srcObject;
 
-            if (hasLocalTracks && hasRemoteTracks) {
-              setMediaStreamsEstablished(true);
-              setIsLoading(false);
-              // Reset retry count since connection is successful
-              setRetryCount(0);
+              // Verify both streams have active audio and video tracks
+              const hasLocalTracks =
+                localStream.getVideoTracks().some((track) => track.enabled) &&
+                localStream.getAudioTracks().some((track) => track.enabled);
+              const hasRemoteTracks =
+                remoteStream.getVideoTracks().some((track) => track.enabled) &&
+                remoteStream.getAudioTracks().some((track) => track.enabled);
+
+              if (hasLocalTracks && hasRemoteTracks) {
+                setMediaStreamsEstablished(true);
+                setIsLoading(false);
+                // Reset retry count since connection is successful
+                setRetryCount(0);
+              }
             }
           }
+        } catch (error) {
+          console.error("Error handling track:", error);
+          // Handle the error appropriately in your UI
         }
       };
 
@@ -298,7 +301,17 @@ const VideoChat = () => {
   };
 
   useEffect(() => {
-    audioProcessor.current = new AudioStreamProcessor();
+    const initProcessor = async () => {
+      try {
+        audioProcessor.current = new AudioStreamProcessor();
+        // Pre-initialize the processor
+        await audioProcessor.current.initialize();
+      } catch (error) {
+        console.error("Failed to initialize audio processor:", error);
+      }
+    };
+
+    initProcessor();
 
     if (mediaError) {
       console.log("1Media permission Check", mediaError);
