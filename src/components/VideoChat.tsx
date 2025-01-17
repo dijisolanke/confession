@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import { AudioStreamProcessor } from "../utils/audioProcessor";
+import { StreamHandler } from "../utils/streamHandler";
 
 import { Root, Overlay, VideoItem, Button } from "./StyledVidRoom";
 
@@ -57,6 +58,7 @@ const VideoChat = () => {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const streamHandler = useRef<StreamHandler | null>(null);
 
   const [rtcState, dispatch] = useReducer(rtcReducer, {
     ...initialState,
@@ -321,18 +323,14 @@ const VideoChat = () => {
   };
 
   useEffect(() => {
-    const initProcessor = async () => {
-      try {
-        const processor = new AudioStreamProcessor();
-        // Initialize immediately
-        await processor.initialize();
-        audioProcessor.current = processor;
-      } catch (error) {
-        console.error("Failed to initialize audio processor:", error);
+    const initializeHandler = async () => {
+      if (remoteVideoRef.current) {
+        streamHandler.current = new StreamHandler(remoteVideoRef.current);
+        await streamHandler.current.initialize();
       }
     };
 
-    initProcessor();
+    initializeHandler();
 
     if (mediaError) {
       console.log("1Media permission Check", mediaError);
@@ -573,7 +571,7 @@ const VideoChat = () => {
       }
 
       // Cleanup audio processor
-      audioProcessor.current?.cleanup();
+      streamHandler.current?.cleanup();
 
       // Remove socket listeners
       handleLeaveRoom();
@@ -593,6 +591,14 @@ const VideoChat = () => {
     // handleMediaPermissionDenied,
     // mediaError,
   ]); //might remove partnerAlias
+
+  // const handleTrack = async (event: RTCTrackEvent) => {
+  //   try {
+  //     await streamHandler.current?.handleTrack(event);
+  //   } catch (error) {
+  //     console.error('Error in track handler:', error);
+  //   }
+  // };
 
   return (
     <Root>
