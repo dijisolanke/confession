@@ -9,9 +9,14 @@ const Root = styled.div`
     height: 12.8vh;
     width: 22.8vw;
     object-fit: none;
-    /* object-fit: cover; */
     filter: blur(3px);
     border-radius: 5px;
+
+    @media (max-width: 790px) {
+      height: 12.8vh;
+      width: 25.8vw;
+    }
+
   }
 
 
@@ -21,6 +26,7 @@ const Root = styled.div`
     display: flex;
     align-items: centre;
     gap: 3rem;
+    justify-content: center;
     /* @media (min-width: 769px) {
         flex-direction: row;
         justify-content: center;
@@ -67,13 +73,17 @@ const Overlay = styled.div<OverlayProps>`
   height: 16.8vh;
   width: 22.8vw;
 
-  /* width: 100%;
-  height: 100%; */
   background-size: cover;
   background-position: center;
   border-radius: 8px; // Match the video's rounded corners
   z-index: 3;
   /* transform: perspective(1000px) rotateY(-20deg); */
+
+  @media (max-width: 790px) {
+      height: 15.8vh;
+      width: 26.8vw;
+    }
+
 `;
 
 const Button = styled.button`
