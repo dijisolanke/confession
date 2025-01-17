@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
+import { AudioStreamProcessor } from "../utils/audioProcessor";
 
 import { Root, Overlay, VideoItem, Button } from "./StyledVidRoom";
 
@@ -50,6 +51,9 @@ const VideoChat = () => {
   );
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  //refs
+  const audioProcessor = useRef<AudioStreamProcessor | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -59,6 +63,8 @@ const VideoChat = () => {
     polite: location.state?.isInitiator === false,
   });
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+
+  // Mutable states
   const [retryCount, setRetryCount] = useState(0);
   const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -186,14 +192,39 @@ const VideoChat = () => {
       };
 
       // Handle incoming remote tracks
-      pc.ontrack = (event) => {
+      pc.ontrack = async (event) => {
         console.log("Received remote track:", {
           kind: event.track.kind,
           enabled: event.track.enabled,
           id: event.track.id,
         });
         if (remoteVideoRef.current && event.streams[0]) {
-          remoteVideoRef.current.srcObject = event.streams[0];
+          if (remoteVideoRef.current && event.streams[0]) {
+            const originalStream = event.streams[0];
+            const processedStream = new MediaStream();
+
+            // Add video tracks directly
+            originalStream.getVideoTracks().forEach((track) => {
+              processedStream.addTrack(track);
+            });
+
+            // Process and add audio tracks
+            if (
+              originalStream.getAudioTracks().length > 0 &&
+              audioProcessor.current
+            ) {
+              const processedAudioStream =
+                await audioProcessor.current.processStream(originalStream, {
+                  pitchShiftAmount: -400,
+                });
+              processedAudioStream.getAudioTracks().forEach((track) => {
+                processedStream.addTrack(track);
+              });
+            }
+
+            remoteVideoRef.current.srcObject = processedStream;
+          }
+
           console.log("Set remote video stream:", {
             streamId: event.streams[0].id,
             tracks: event.streams[0].getTracks().length,
@@ -267,6 +298,8 @@ const VideoChat = () => {
   };
 
   useEffect(() => {
+    audioProcessor.current = new AudioStreamProcessor();
+
     if (mediaError) {
       console.log("1Media permission Check", mediaError);
       if (mediaError === "Media permission denied, returning to lobby") {
@@ -504,6 +537,9 @@ const VideoChat = () => {
       } catch (err) {
         console.log("Could not reset permissions");
       }
+
+      // Cleanup audio processor
+      audioProcessor.current?.cleanup();
 
       // Remove socket listeners
       handleLeaveRoom();
