@@ -5,6 +5,11 @@ interface OverlayProps {
 }
 
 const Root = styled.div`
+  h1{
+    color: #4c4c4cde;
+    text-align: center;
+  }
+  
   video {
     height: 12.8vh;
     width: 30vw;
@@ -13,8 +18,8 @@ const Root = styled.div`
     border-radius: 5px;
 
     @media (max-width: 790px) {
-      height: 15vh;
-      width: 30vw;
+      /* height: 13vh; */
+      width: 50vw;
     }
 
   }
@@ -27,16 +32,15 @@ const Root = styled.div`
     align-items: centre;
     gap: 3rem;
     justify-content: center;
-    /* @media (min-width: 769px) {
-        flex-direction: row;
-        justify-content: center;
-        gap: 40px;
-        align-items: flex-start;
 
-        .remote-vid-wrapper {
-            margin-top: 0;  // Remove margin when side by side
-        }
-        } */
+    @media (max-width: 790px) {
+      gap: 2rem;
+    }
+  }
+
+  .leave-button{
+    margin: 6rem auto 0 auto;
+    display: flex;
   }
 `;
 
@@ -44,26 +48,43 @@ const VideoItem = styled.div`
   position: relative;
   width: 30vw;
   height: 30vh;
-  /* transform: perspective(1000px) rotateY(-124deg); */
 
   .local-vid{
     transform: perspective(1000px) rotateY(46deg);
-    /* object-fit: cover; */
+    @media (max-width: 790px) {
+      transform: perspective(264px) rotateY(47deg);
+      height: 12vh;
+    }
   }
   .local-overlay{
     transform: perspective(1000px) rotateY(46deg);
+    @media (max-width: 790px) {
+      transform: perspective(264px) rotateY(47deg);
+      height: 16vh;
+      width: 50vw;
+    }
   }
 
   .remote-vid{
     transform: perspective(1000px) rotateY(124deg);
+    @media (max-width: 790px) {
+      transform: perspective(204px) rotateY(-47deg);
+      height: 7vh;
+      width: 50vw;
+    }
   }
   .remote-overlay{
     transform: perspective(1000px) rotateY(124deg);
+    @media (max-width: 790px) {
+      transform: perspective(264px) rotateY(-47deg);
+      height: 16vh;
+      width: 50vw;
+    }
   }
 
   @media (max-width: 790px) {
       height: 16vh;
-      width: 30vw;
+      width: 40vw;
     }
 `;
 
@@ -75,8 +96,8 @@ const Overlay = styled.div<OverlayProps>`
   top: 0;
   left: 0;
 
-  height: 16.8vh;
-  width: 30vw;
+  /* height: 16.8vh; */
+  width: 35vw;
 
   background-size: cover;
   background-position: center;
@@ -86,7 +107,7 @@ const Overlay = styled.div<OverlayProps>`
 
   @media (max-width: 790px) {
       height: 16vh;
-      width: 30vw;
+      width: 50vw;
     }
 
 `;
@@ -113,3 +134,5 @@ const Button = styled.button`
 `;
 
 export { Root, Overlay, VideoItem, Button };
+
+

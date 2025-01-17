@@ -49,7 +49,7 @@ const VideoChat = () => {
     location.state?.partnerAlias || "Anonymous"
   );
   const [mediaError, setMediaError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // const [isLoading, setIsLoading] = useState(true);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -62,7 +62,7 @@ const VideoChat = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [countdown, setCountdown] = useState(3);
+  // const [countdown, setCountdown] = useState(3);
 
   const [showPlayButton, setShowPlayButton] = useState(false);
 
@@ -171,7 +171,7 @@ const VideoChat = () => {
         dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
 
         if (pc.connectionState === "connected") {
-          setIsLoading(false);
+          // setIsLoading(false);
         } else if (
           pc.connectionState === "failed" &&
           !mediaStreamsEstablished &&
@@ -228,7 +228,7 @@ const VideoChat = () => {
 
             if (hasLocalTracks && hasRemoteTracks) {
               setMediaStreamsEstablished(true);
-              setIsLoading(false);
+              // setIsLoading(false);
               // Reset retry count since connection is successful
               setRetryCount(0);
             }
@@ -267,22 +267,22 @@ const VideoChat = () => {
   };
 
   useEffect(() => {
-    if (mediaError) {
-      console.log("1Media permission Check", mediaError);
-      if (mediaError === "Media permission denied, returning to lobby") {
-        console.log("2Media permission Check", mediaError);
-        const timer = setInterval(() => {
-          setCountdown((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
-        return () => clearInterval(timer);
-      }
-    }
+    // if (mediaError) {
+    //   console.log("1Media permission Check", mediaError);
+    //   if (mediaError === "Media permission denied, returning to lobby") {
+    //     console.log("2Media permission Check", mediaError);
+    //     const timer = setInterval(() => {
+    //       setCountdown((prev) => {
+    //         if (prev <= 1) {
+    //           clearInterval(timer);
+    //           return 0;
+    //         }
+    //         return prev - 1;
+    //       });
+    //     }, 1000);
+    //     return () => clearInterval(timer);
+    //   }
+    // }
 
     let isComponentMounted = true;
 
@@ -318,7 +318,7 @@ const VideoChat = () => {
 
       try {
         console.log("Received TURN credentials, beginning setup...");
-        setIsLoading(true);
+        // setIsLoading(true);
 
         const stream = await setupMediaStream();
         localStreamRef.current = stream; // This line was missing
@@ -406,7 +406,7 @@ const VideoChat = () => {
           new RTCSessionDescription(answer)
         );
         console.log("Set remote description from answer");
-        setIsLoading(false);
+        // setIsLoading(false);
       }
     };
 
@@ -526,15 +526,15 @@ const VideoChat = () => {
 
   return (
     <Root>
-      <h1 className="text-xl font-bold">Video Chat with {partnerAlias}</h1>
-      {isLoading && <p>Initializing video chat...</p>}
-      {/* {mediaError && <p className="text-red-500">Error: {mediaError}</p>} */}
-      {mediaError === "Media permission denied, returning to lobby" && (
+      <h1 className="text-xl font-bold"> Room</h1>
+      {/* {isLoading && <p>Initializing video chat...</p>} */}
+      {mediaError && <p className="text-red-500">Error: {mediaError}</p>}
+      {/* {mediaError === "Media permission denied, returning to lobby" && (
         <p>Redirecting to lobby in {countdown} seconds...</p>
-      )}
-      <p className="text-sm text-gray-600">
+      )} */}
+      {/* <p className="text-sm text-gray-600">
         Connection State: {rtcState.connectionState}
-      </p>
+      </p> */}
       <div className="videos-container">
         <VideoItem>
           <Overlay
@@ -543,14 +543,14 @@ const VideoChat = () => {
           />
           <video
             // controls
-            // src="/public/candle.mp4"
+            // src="/public/sample.mp4"
             ref={localVideoRef}
             autoPlay
             muted
             playsInline
             className="local-vid"
           />
-          <p>You</p>
+          {/* <p>You</p> */}
         </VideoItem>
 
         <VideoItem>
@@ -571,7 +571,7 @@ const VideoChat = () => {
               <Play className="text-white" size={24} />
             </Button>
           )}
-          <p>{partnerAlias}</p>
+          {/* <p>{partnerAlias}</p> */}
         </VideoItem>
       </div>
       <button
@@ -588,7 +588,7 @@ const VideoChat = () => {
           navigate("/");
           window.location.reload();
         }}
-        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        className="leave-button"
       >
         Leave Chat
       </button>
