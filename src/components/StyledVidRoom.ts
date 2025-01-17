@@ -69,7 +69,7 @@ const VideoItem = styled.div`
     transform: perspective(1000px) rotateY(124deg);
     @media (max-width: 790px) {
       transform: perspective(204px) rotateY(-47deg);
-      height: 7vh;
+      height: 16vh;
       width: 50vw;
     }
   }
