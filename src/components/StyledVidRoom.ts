@@ -90,7 +90,6 @@ const VideoItem = styled.div`
 
 // Styled component for the overlay image with typed props
 const Overlay = styled.div<OverlayProps>`
-/* display: none; */
   position: absolute;
   background-image: url(${(props) => props.backgroundImage});
   top: 0;

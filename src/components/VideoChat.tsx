@@ -48,7 +48,7 @@ const VideoChat = () => {
   const [partnerAlias] = useState<string>(
     location.state?.partnerAlias || "Anonymous"
   );
-  const [mediaError, setMediaError] = useState<string | null>(null);
+  // const [mediaError, setMediaError] = useState<string | null>(null);
   // const [isLoading, setIsLoading] = useState(true);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -76,7 +76,7 @@ const VideoChat = () => {
         })
         .catch((error) => {
           console.log("Manual play failed:", error);
-          setMediaError(`Manual play failed: ${error}`);
+          // setMediaError(`Manual play failed: ${error}`);
         });
     }
   };
@@ -99,7 +99,7 @@ const VideoChat = () => {
       }, 2000);
     } else if (!mediaStreamsEstablished && retryCount >= 3) {
       console.log("Max retry attempts reached. Call setup failed.");
-      setMediaError("Failed to establish connection after multiple attempts.");
+      // setMediaError("Failed to establish connection after multiple attempts.");
     }
   };
 
@@ -335,7 +335,7 @@ const VideoChat = () => {
         console.log("Joined room:", roomId);
       } catch (error) {
         console.error("Setup failed: ", error);
-        setMediaError(error instanceof Error ? error.message : "Setup failed");
+        // setMediaError(error instanceof Error ? error.message : "Setup failed");
         retrySetup();
       }
     };
@@ -386,7 +386,7 @@ const VideoChat = () => {
         });
       } catch (err) {
         console.error("Setup failed:", err);
-        setMediaError(err instanceof Error ? err.message : "Setup failed");
+        // setMediaError(err instanceof Error ? err.message : "Setup failed");
         if (!mediaStreamsEstablished) {
           retrySetup();
         }
@@ -528,7 +528,7 @@ const VideoChat = () => {
     <Root>
       <h1 className="text-xl font-bold"> Room</h1>
       {/* {isLoading && <p>Initializing video chat...</p>} */}
-      {mediaError && <p className="text-red-500">Error: {mediaError}</p>}
+      {/* {mediaError && <p className="text-red-500">Error: {mediaError}</p>} */}
       {/* {mediaError === "Media permission denied, returning to lobby" && (
         <p>Redirecting to lobby in {countdown} seconds...</p>
       )} */}
