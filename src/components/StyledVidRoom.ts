@@ -7,14 +7,14 @@ interface OverlayProps {
 const Root = styled.div`
   video {
     height: 12.8vh;
-    width: 22.8vw;
+    width: 30vw;
     object-fit: none;
     filter: blur(3px);
     border-radius: 5px;
 
     @media (max-width: 790px) {
-      height: 12.8vh;
-      width: 25.8vw;
+      height: 15vh;
+      width: 30vw;
     }
 
   }
@@ -60,6 +60,11 @@ const VideoItem = styled.div`
   .remote-overlay{
     transform: perspective(1000px) rotateY(124deg);
   }
+
+  @media (max-width: 790px) {
+      height: 16vh;
+      width: 30vw;
+    }
 `;
 
 // Styled component for the overlay image with typed props
@@ -71,7 +76,7 @@ const Overlay = styled.div<OverlayProps>`
   left: 0;
 
   height: 16.8vh;
-  width: 22.8vw;
+  width: 30vw;
 
   background-size: cover;
   background-position: center;
@@ -80,8 +85,8 @@ const Overlay = styled.div<OverlayProps>`
   /* transform: perspective(1000px) rotateY(-20deg); */
 
   @media (max-width: 790px) {
-      height: 15.8vh;
-      width: 26.8vw;
+      height: 16vh;
+      width: 30vw;
     }
 
 `;
