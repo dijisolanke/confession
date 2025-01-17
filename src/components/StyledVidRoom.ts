@@ -6,67 +6,21 @@ interface OverlayProps {
 
 const Root = styled.div`
   video {
-    height: inherit;
-    width: inherit;
-    object-fit: contain;
-    filter: blur(7px);
+    height: 12.8vh;
+    width: 22.8vw;
+    object-fit: none;
+    /* object-fit: cover; */
+    filter: blur(3px);
+    border-radius: 5px;
   }
 
-  .local-vid-wrapper {
-    display: flex;
-    height: 400px;
-    width: 400px;
-    border: 2px solid #4c4c4cde;
-    border-radius: 25px;
-    z-index: -2;
-  }
-
-  .remote-vid-wrapper {
-    margin-top: 150px;
-    display: flex;
-    height: 400px;
-    width: 400px;
-    border: 2px solid #4c4c4cde;
-    border-radius: 25px;
-    z-index: -2;
-  }
-
-  .svg-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-size: cover;
-    background-position: center;
-  }
-
-  @media (max-width: 768px) {
-    /* video {
-        width: 100%;
-        height: auto;
-        max-height: 40vh;
-        }
-
-        .local-vid-wrapper,
-        .remote-vid-wrapper {
-        width: 100%;
-        height: auto;
-        max-height: 40vh;
-        }
-
-        .remote-vid-wrapper {
-        margin-top: 20px;  // Reduced margin on mobile
-        }
-
-        .svg-overlay {
-        width: 100%;
-        height: 100%;
-        } */
-  }
 
   // Add a container for both videos
   .videos-container {
+
+    display: flex;
+    align-items: centre;
+    gap: 3rem;
     /* @media (min-width: 769px) {
         flex-direction: row;
         justify-content: center;
@@ -82,42 +36,44 @@ const Root = styled.div`
 
 const VideoItem = styled.div`
   position: relative;
-  width: 40vw;
-  height: 40vh
-  /* height: auto;
-    width: auto; */
-  /* height: 52vh;
-    width: 60%;
-    aspect-ratio: 18 / 32; */
+  width: 30vw;
+  height: 30vh;
+  /* transform: perspective(1000px) rotateY(-124deg); */
 
-  /* @media (max-width: 900px) {
-      aspect-ratio: 9 / 11;
-    }
-  
-    video {
-      width: 100%;
-      height: 100%;
-      border-radius: 8px;
-      object-fit: cover;
-  
-      @media (max-width: 900px) {
-        width: 60vw;
-      }
-    } */
+  .local-vid{
+    transform: perspective(1000px) rotateY(46deg);
+    /* object-fit: cover; */
+  }
+  .local-overlay{
+    transform: perspective(1000px) rotateY(46deg);
+  }
+
+  .remote-vid{
+    transform: perspective(1000px) rotateY(124deg);
+  }
+  .remote-overlay{
+    transform: perspective(1000px) rotateY(124deg);
+  }
 `;
 
 // Styled component for the overlay image with typed props
 const Overlay = styled.div<OverlayProps>`
+/* display: none; */
   position: absolute;
   background-image: url(${(props) => props.backgroundImage});
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+
+  height: 16.8vh;
+  width: 22.8vw;
+
+  /* width: 100%;
+  height: 100%; */
   background-size: cover;
   background-position: center;
   border-radius: 8px; // Match the video's rounded corners
   z-index: 3;
+  /* transform: perspective(1000px) rotateY(-20deg); */
 `;
 
 const Button = styled.button`

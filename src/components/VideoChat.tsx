@@ -537,7 +537,10 @@ const VideoChat = () => {
       </p>
       <div className="videos-container">
         <VideoItem>
-          <Overlay backgroundImage={backgroundImage} />
+          <Overlay
+            backgroundImage={backgroundImage}
+            className="local-overlay"
+          />
           <video
             // controls
             // src="/public/candle.mp4"
@@ -545,20 +548,23 @@ const VideoChat = () => {
             autoPlay
             muted
             playsInline
-            className="w-64 h-48 bg-gray-200 rounded"
+            className="local-vid"
           />
           <p>You</p>
         </VideoItem>
 
         <VideoItem>
-          <Overlay backgroundImage={backgroundImage} />
+          <Overlay
+            backgroundImage={backgroundImage}
+            className="remote-overlay"
+          />
           <video
             // controls
             // src="/public/sample.mp4"
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className="w-64 h-48 bg-gray-200 rounded"
+            className="remote-vid"
           />
           {showPlayButton && (
             <Button onClick={handleManualPlay}>
