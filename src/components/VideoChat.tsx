@@ -193,23 +193,33 @@ const VideoChat = () => {
 
       // Handle incoming remote tracks
       pc.ontrack = async (event) => {
-        console.log("Received remote track:", {
-          kind: event.track.kind,
-          enabled: event.track.enabled,
-          id: event.track.id,
-        });
         try {
+          console.log("Received remote track:", {
+            kind: event.track.kind,
+            enabled: event.track.enabled,
+            id: event.track.id,
+          });
           if (remoteVideoRef.current && event.streams[0]) {
             const originalStream = event.streams[0];
             const processedStream = new MediaStream();
             // Handle audio tracks first if present
             if (event.track.kind === "audio" && audioProcessor.current) {
               try {
+                console.log("Processing audio track");
                 const processedAudioStream =
                   await audioProcessor.current.processStream(originalStream, {
                     pitchShiftAmount: -400,
                   });
-                processedAudioStream.getAudioTracks().forEach((track) => {
+
+                const audioTracks = processedAudioStream.getAudioTracks();
+                console.log("Processed audio tracks:", audioTracks.length);
+
+                audioTracks.forEach((track) => {
+                  console.log("Adding processed audio track:", {
+                    enabled: track.enabled,
+                    muted: track.muted,
+                    readyState: track.readyState,
+                  });
                   processedStream.addTrack(track);
                 });
               } catch (error) {
@@ -219,12 +229,20 @@ const VideoChat = () => {
                   processedStream.addTrack(track);
                 });
               }
-            } else {
-              // For video tracks or if audio processing fails, add directly
+            } else if (event.track.kind === "video") {
+              // Handle video track
+              console.log("Adding video track");
               processedStream.addTrack(event.track);
             }
 
-            remoteVideoRef.current.srcObject = processedStream;
+            if (remoteVideoRef.current.srcObject !== processedStream) {
+              remoteVideoRef.current.srcObject = processedStream;
+              console.log("Updated remote video srcObject");
+
+              // Ensure audio is unmuted
+              remoteVideoRef.current.muted = false;
+              remoteVideoRef.current.volume = 1;
+            }
 
             console.log("Set remote video stream:", {
               streamId: event.streams[0].id,
@@ -591,7 +609,7 @@ const VideoChat = () => {
         <VideoItem>
           <Overlay backgroundImage={backgroundImage} />
           <video
-            // controls
+            controls
             // src="/public/candle.mp4"
             ref={localVideoRef}
             autoPlay
@@ -605,7 +623,7 @@ const VideoChat = () => {
         <VideoItem>
           <Overlay backgroundImage={backgroundImage} />
           <video
-            // controls
+            controls
             // src="/public/sample.mp4"
             ref={remoteVideoRef}
             autoPlay

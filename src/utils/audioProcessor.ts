@@ -31,6 +31,7 @@ export class AudioStreamProcessor {
 
       // Load the worklet module
       await this.audioContext.audioWorklet.addModule(workletUrl);
+      console.log('Worklet module loaded successfully');
 
       // Clean up
       URL.revokeObjectURL(workletUrl);
@@ -48,6 +49,12 @@ export class AudioStreamProcessor {
       // Create AudioContext if it doesn't exist
       if (!this.audioContext) {
         this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        console.log('AudioContext created:', this.audioContext.state);
+
+        if (this.audioContext.state === 'suspended') {
+            await this.audioContext.resume();
+            console.log('AudioContext resumed:', this.audioContext.state);
+        }
       }
 
       // Load the worklet
@@ -64,6 +71,12 @@ export class AudioStreamProcessor {
   ): Promise<MediaStream> {
     const { pitchShiftAmount = -400 } = options;
 
+    console.log('Processing stream:', {
+        audioTracks: mediaStream.getAudioTracks().length,
+        isInitialized: this.isInitialized,
+        contextState: this.audioContext?.state
+      });
+
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -79,6 +92,7 @@ export class AudioStreamProcessor {
     try {
       // Create source from the media stream
       this.source = this.audioContext.createMediaStreamSource(mediaStream);
+      console.log('Media stream source created');
 
       // Create AudioWorkletNode
       this.workletNode = new AudioWorkletNode(this.audioContext, 'pitch-shift-processor', {
@@ -86,6 +100,13 @@ export class AudioStreamProcessor {
         numberOfOutputs: 1,
         channelCount: 1
       });
+
+      // Add error handler for the worklet node
+      this.workletNode.onprocessorerror = (event) => {
+        console.error('AudioWorklet processing error:', event);
+      };
+
+      console.log('AudioWorkletNode created');
 
       // Set the pitch shift parameter
       const param = this.workletNode.parameters.get('pitchShift');
@@ -95,12 +116,19 @@ export class AudioStreamProcessor {
 
       // Create destination
       this.destination = this.audioContext.createMediaStreamDestination();
+      console.log('MediaStreamDestination created');
 
       // Connect the audio processing chain
       this.source.connect(this.workletNode);
       this.workletNode.connect(this.destination);
+      console.log('Audio processing chain connected');
 
       this.isProcessing = true;
+
+      const processedStream = this.destination.stream;
+      console.log('Processed stream created:', {
+        audioTracks: processedStream.getAudioTracks().length
+      });
 
       return this.destination.stream;
     } catch (error) {
@@ -112,9 +140,11 @@ export class AudioStreamProcessor {
   disconnect(): void {
     if (this.source) {
       this.source.disconnect();
+      console.log('Source disconnected');
     }
     if (this.workletNode) {
       this.workletNode.disconnect();
+      console.log('WorkletNode disconnected');
     }
     this.isProcessing = false;
   }
@@ -124,6 +154,7 @@ export class AudioStreamProcessor {
     if (this.audioContext) {
       await this.audioContext.close();
       this.audioContext = null;
+      console.log('AudioContext closed');
     }
     this.isInitialized = false;
   }
@@ -133,6 +164,7 @@ export class AudioStreamProcessor {
       const param = this.workletNode.parameters.get('pitchShift');
       if (param) {
         param.setValueAtTime(amount, this.audioContext?.currentTime || 0);
+        console.log('Pitch shift updated:', amount);
       }
     }
   }

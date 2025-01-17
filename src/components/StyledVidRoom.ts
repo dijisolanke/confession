@@ -9,7 +9,7 @@ const Root = styled.div`
     height: inherit;
     width: inherit;
     object-fit: contain;
-    filter: blur(7px);
+    /* filter: blur(7px); */
   }
 
   .local-vid-wrapper {
@@ -108,6 +108,7 @@ const VideoItem = styled.div`
 
 // Styled component for the overlay image with typed props
 const Overlay = styled.div<OverlayProps>`
+display: none;
   position: absolute;
   background-image: url(${(props) => props.backgroundImage});
   top: 0;
