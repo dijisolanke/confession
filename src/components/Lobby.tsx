@@ -46,7 +46,7 @@ const Lobby: React.FC = () => {
   return (
     <Root>
       <h1>
-        Anonymous<span>TM</span>
+        Confession<span>TM</span>
       </h1>
       <form onSubmit={handleJoin}>
         <InputContainer>

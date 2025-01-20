@@ -62,7 +62,7 @@ const Root = styled.div`
     z-index: 1; /* Place it behind other content */
     align-self: center;
     @media (max-width: 850px) {
-      filter: blur(0);
+      filter: blur(1px);
     }
   }
 `;

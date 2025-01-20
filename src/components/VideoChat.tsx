@@ -66,6 +66,50 @@ const VideoChat = () => {
 
   const [showPlayButton, setShowPlayButton] = useState(false);
 
+  function hideVideosIfOverlaysHidden() {
+    const overlays = document.getElementsByClassName("overlay");
+    const videos = document.querySelectorAll("video");
+
+    const anyOverlayVisible = Array.from(overlays).some(
+      (overlay) =>
+        window.getComputedStyle(overlay as HTMLElement).display !== "none"
+    );
+
+    videos.forEach((video) => {
+      (video as HTMLVideoElement).style.display = anyOverlayVisible
+        ? "block"
+        : "none";
+    });
+  }
+
+  // Initial setup
+  setTimeout(() => {
+    const overlays = document.getElementsByClassName("overlay");
+    const videos = document.querySelectorAll("video");
+
+    if (overlays.length > 0 && videos.length > 0) {
+      // Set up MutationObserver
+      const observer = new MutationObserver((_mutations: MutationRecord[]) => {
+        hideVideosIfOverlaysHidden();
+      });
+
+      Array.from(overlays).forEach((overlay) => {
+        observer.observe(overlay, {
+          attributes: true,
+          attributeFilter: ["style"],
+        });
+      });
+
+      // Periodic check (every 1 second)
+      setInterval(hideVideosIfOverlaysHidden, 1000);
+
+      // Initial check
+      hideVideosIfOverlaysHidden();
+    } else {
+      console.warn("Overlay or video elements not found after 10 seconds");
+    }
+  }, 10000); // Wait for 10 seconds
+
   const handleManualPlay = () => {
     if (remoteVideoRef.current) {
       remoteVideoRef.current
@@ -559,7 +603,7 @@ const VideoChat = () => {
         <VideoItem>
           <Overlay
             backgroundImage={backgroundImage}
-            className="remote-overlay"
+            className="remote-overlay overlay"
           />
           <video
             // controls
