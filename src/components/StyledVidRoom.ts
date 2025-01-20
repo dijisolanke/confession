@@ -61,6 +61,9 @@ const Root = styled.div`
     filter: blur(2px);
     z-index: 1; /* Place it behind other content */
     align-self: center;
+    @media (max-width: 850px) {
+      filter: blur(0);
+    }
   }
 `;
 
