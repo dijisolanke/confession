@@ -526,7 +526,7 @@ const VideoChat = () => {
 
   return (
     <Root>
-      <img className="bg-img" src="/public/blk.webp" />
+      <img className="bg-img" src="/blk.webp" />
 
       <h1 className="text-xl font-bold"> Room</h1>
       {/* {isLoading && <p>Initializing video chat...</p>} */}
