@@ -526,6 +526,8 @@ const VideoChat = () => {
 
   return (
     <Root>
+      <img className="bg-img" src="/public/blk.webp" />
+
       <h1 className="text-xl font-bold"> Room</h1>
       {/* {isLoading && <p>Initializing video chat...</p>} */}
       {/* {mediaError && <p className="text-red-500">Error: {mediaError}</p>} */}
@@ -535,6 +537,7 @@ const VideoChat = () => {
       {/* <p className="text-sm text-gray-600">
         Connection State: {rtcState.connectionState}
       </p> */}
+
       <div className="videos-container">
         <VideoItem>
           <Overlay

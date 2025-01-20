@@ -5,14 +5,20 @@ interface OverlayProps {
 }
 
 const Root = styled.div`
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
   h1{
     color: #4c4c4cde;
     text-align: center;
+    margin-top: unset;
   }
   
   video {
     height: 12.8vh;
-    width: 30vw;
+    width: 40vw;
     object-fit: none;
     filter: blur(3px);
     border-radius: 5px;
@@ -32,15 +38,29 @@ const Root = styled.div`
     align-items: centre;
     gap: 3rem;
     justify-content: center;
+    z-index: 4;
+    margin-right: 10vw;
 
     @media (max-width: 790px) {
       gap: 2rem;
+      margin-right: unset;
     }
   }
 
   .leave-button{
-    margin: 6rem auto 0 auto;
+    margin: 3rem auto 0 auto;
     display: flex;
+  }
+
+  .bg-img{
+    position: relative;
+    width: 20%;
+    object-fit: contain;
+    border-radius: 100%;
+    opacity: 0.8;
+    filter: blur(2px);
+    z-index: 1; /* Place it behind other content */
+    align-self: center;
   }
 `;
 
@@ -51,14 +71,14 @@ const VideoItem = styled.div`
 
   .local-vid{
     transform: perspective(1000px) rotateY(46deg);
-    @media (max-width: 790px) {
+    @media (max-width: 850px) {
       transform: perspective(264px) rotateY(47deg);
       height: 12vh;
     }
   }
   .local-overlay{
     transform: perspective(1000px) rotateY(46deg);
-    @media (max-width: 790px) {
+    @media (max-width: 850px) {
       transform: perspective(264px) rotateY(47deg);
       height: 16vh;
       width: 50vw;
@@ -66,23 +86,24 @@ const VideoItem = styled.div`
   }
 
   .remote-vid{
-    transform: perspective(1000px) rotateY(124deg);
-    @media (max-width: 790px) {
-      transform: perspective(204px) rotateY(-47deg);
-      height: 16vh;
-      width: 50vw;
-    }
+    transform: perspective(1000px) rotateY(-46deg); /* Mirror rotate to the left */
+
+  @media (max-width: 850px) {
+    transform: rotateY(0deg);
+    width: 40vw;
+  }
   }
   .remote-overlay{
-    transform: perspective(1000px) rotateY(124deg);
-    @media (max-width: 790px) {
-      transform: perspective(264px) rotateY(-47deg);
-      height: 16vh;
-      width: 50vw;
-    }
+    transform: perspective(1000px) rotateY(-46deg); /* Mirror rotate to the left */
+  
+  @media (max-width: 850px) {
+    transform: rotateY(0deg);
+    width: 40vw;
+ 
+  }
   }
 
-  @media (max-width: 790px) {
+  @media (max-width: 850px) {
       height: 16vh;
       width: 40vw;
     }
@@ -95,8 +116,8 @@ const Overlay = styled.div<OverlayProps>`
   top: 0;
   left: 0;
 
-  /* height: 16.8vh; */
-  width: 35vw;
+  height: 16.8vh;
+  width: 40vw;
 
   background-size: cover;
   background-position: center;
@@ -104,7 +125,7 @@ const Overlay = styled.div<OverlayProps>`
   z-index: 3;
   /* transform: perspective(1000px) rotateY(-20deg); */
 
-  @media (max-width: 790px) {
+  @media (max-width: 850px) {
       height: 16vh;
       width: 50vw;
     }

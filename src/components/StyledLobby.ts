@@ -66,7 +66,7 @@ export const SurgeBorder = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
-    border: 2px solid turquoise;
+    border: 2px solid #634d0b;
     border-radius: 25px;
     clip-path: inset(0 99% 99% 0);
     animation: ${surgeAnimation} 14s reverse infinite linear;
