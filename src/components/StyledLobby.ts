@@ -1,5 +1,5 @@
 // StyledInput.ts
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes } from "styled-components";
 
 const surgeAnimation = keyframes`
 
@@ -17,7 +17,7 @@ export const InputContainer = styled.div`
 `;
 
 export const StyledInput = styled.input`
-text-align: center;
+  text-align: center;
   width: 200px;
   padding: 10px 15px;
   background: black;
@@ -48,7 +48,7 @@ export const SurgeBorder = styled.div`
   pointer-events: none;
 
   &::before {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -60,7 +60,7 @@ export const SurgeBorder = styled.div`
     animation: ${surgeAnimation} 14s linear infinite;
   }
   &::after {
-    content: '';
+    content: "";
     position: absolute;
     top: 0;
     left: 0;
@@ -74,36 +74,39 @@ export const SurgeBorder = styled.div`
 `;
 
 export const Root = styled.div`
-
-span{
+  span {
     font-size: 9px;
     display: inline-flex;
     bottom: 24px;
     position: relative;
+  }
+  color: #4c4c4cde;
 
-}
-    color: #4c4c4cde;
-
-    button{
-        margin-bottom: 29%;
-        margin-top: 5%;
-        width: 40%;
-        align-self: center;
-    }
-    h2{
-        text-align: center;
-        margin-top: -1px;
-        color: white;
-    }
-    form{
-        display: flex;
-        flex-direction: column;
-    }
-    ul {
-        list-style-type: none;
-        padding: unset;
-        text-align: center;
-        font-family: DMMono, "Courier New", Courier, monospace;
-}
-
-`
+  button {
+    margin-bottom: 29%;
+    margin-top: 5%;
+    width: 40%;
+    align-self: center;
+  }
+  h1 {
+    line-height: 2.1;
+  }
+  h2 {
+    text-align: center;
+    margin-top: -1px;
+    color: white;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+  }
+  ul {
+    list-style-type: none;
+    padding: unset;
+    text-align: center;
+    font-family: DMMono, "Courier New", Courier, monospace;
+  }
+  li {
+    color: #d8a31c;
+  }
+`;

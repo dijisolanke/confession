@@ -7,6 +7,8 @@ import { Root, Overlay, VideoItem, Button } from "./StyledVidRoom";
 import backgroundImage from "/china.webp";
 import { Play } from "lucide-react";
 
+import { preventDevToolsInspection } from "../utils/watcher";
+
 const socket = io("https://server-0w31.onrender.com");
 
 interface RTCState {
@@ -65,50 +67,6 @@ const VideoChat = () => {
   // const [countdown, setCountdown] = useState(3);
 
   const [showPlayButton, setShowPlayButton] = useState(false);
-
-  function hideVideosIfOverlaysHidden() {
-    const overlays = document.getElementsByClassName("overlay");
-    const videos = document.querySelectorAll("video");
-
-    const anyOverlayVisible = Array.from(overlays).some(
-      (overlay) =>
-        window.getComputedStyle(overlay as HTMLElement).display !== "none"
-    );
-
-    videos.forEach((video) => {
-      (video as HTMLVideoElement).style.display = anyOverlayVisible
-        ? "block"
-        : "none";
-    });
-  }
-
-  // Initial setup
-  setTimeout(() => {
-    const overlays = document.getElementsByClassName("overlay");
-    const videos = document.querySelectorAll("video");
-
-    if (overlays.length > 0 && videos.length > 0) {
-      // Set up MutationObserver
-      const observer = new MutationObserver((_mutations: MutationRecord[]) => {
-        hideVideosIfOverlaysHidden();
-      });
-
-      Array.from(overlays).forEach((overlay) => {
-        observer.observe(overlay, {
-          attributes: true,
-          attributeFilter: ["style"],
-        });
-      });
-
-      // Periodic check (every 1 second)
-      setInterval(hideVideosIfOverlaysHidden, 1000);
-
-      // Initial check
-      hideVideosIfOverlaysHidden();
-    } else {
-      console.warn("Overlay or video elements not found after 10 seconds");
-    }
-  }, 10000); // Wait for 10 seconds
 
   const handleManualPlay = () => {
     if (remoteVideoRef.current) {
@@ -493,6 +451,9 @@ const VideoChat = () => {
 
     setupCall();
 
+    //dev tools watcher
+    const cleanup = preventDevToolsInspection();
+
     return () => {
       isComponentMounted = false;
       console.log("Cleaning up...");
@@ -549,6 +510,7 @@ const VideoChat = () => {
         console.log("Could not reset permissions");
       }
 
+      cleanup();
       // Remove socket listeners
       handleLeaveRoom();
       // socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
@@ -572,7 +534,6 @@ const VideoChat = () => {
     <Root>
       <img className="bg-img" src="/blk.webp" />
 
-      <h1 className="text-xl font-bold"> Room</h1>
       {/* {isLoading && <p>Initializing video chat...</p>} */}
       {/* {mediaError && <p className="text-red-500">Error: {mediaError}</p>} */}
       {/* {mediaError === "Media permission denied, returning to lobby" && (
@@ -583,32 +544,28 @@ const VideoChat = () => {
       </p> */}
 
       <div className="videos-container">
-        <VideoItem>
+        <VideoItem className="top-container">
           <Overlay
             backgroundImage={backgroundImage}
             className="local-overlay"
           />
           <video
-            // controls
-            // src="/public/sample.mp4"
-            ref={localVideoRef}
+            ref={remoteVideoRef}
             autoPlay
             muted
             playsInline
             className="local-vid"
           />
-          {/* <p>You</p> */}
+          {/* <p>{partnerAlias}</p> */}
         </VideoItem>
 
-        <VideoItem>
+        <VideoItem className="bottom-container">
           <Overlay
             backgroundImage={backgroundImage}
             className="remote-overlay overlay"
           />
           <video
-            // controls
-            // src="/public/sample.mp4"
-            ref={remoteVideoRef}
+            ref={localVideoRef}
             autoPlay
             playsInline
             className="remote-vid"
@@ -618,7 +575,7 @@ const VideoChat = () => {
               <Play className="text-white" size={24} />
             </Button>
           )}
-          {/* <p>{partnerAlias}</p> */}
+          {/* <p>You</p> */}
         </VideoItem>
       </div>
       <button
