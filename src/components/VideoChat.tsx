@@ -7,7 +7,7 @@ import { Root, Overlay, VideoItem, Button } from "./StyledVidRoom";
 import backgroundImage from "/china.webp";
 import { Play } from "lucide-react";
 
-import { preventDevToolsInspection } from "../utils/watcher";
+// import { preventDevToolsInspection } from "../utils/watcher";
 
 const socket = io("https://server-0w31.onrender.com");
 
@@ -452,7 +452,7 @@ const VideoChat = () => {
     setupCall();
 
     //dev tools watcher
-    const cleanup = preventDevToolsInspection();
+    // const cleanup = preventDevToolsInspection();
 
     return () => {
       isComponentMounted = false;
@@ -510,7 +510,7 @@ const VideoChat = () => {
         console.log("Could not reset permissions");
       }
 
-      cleanup();
+      // cleanup();
       // Remove socket listeners
       handleLeaveRoom();
       // socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
