@@ -78,7 +78,7 @@ const VideoItem = styled.div`
   height: 30vh;
 
   .local-vid {
-    transform: perspective(1000px) rotateY(46deg);
+    transform: perspective(1000px) rotateY(57deg);
 
     @media (max-width: 850px) {
       border: solid 2px;
@@ -89,7 +89,7 @@ const VideoItem = styled.div`
     }
   }
   .local-overlay {
-    transform: perspective(1000px) rotateY(56deg);
+    transform: perspective(1000px) rotateY(57deg);
 
     @media (max-width: 850px) {
       transform: rotateY(0deg);
