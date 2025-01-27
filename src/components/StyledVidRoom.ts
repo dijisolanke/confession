@@ -124,6 +124,7 @@ const VideoItem = styled.div`
   @media (max-width: 850px) {
     height: 16vh;
     width: 40vw;
+    border-radius: 5%;
   }
 `;
 
