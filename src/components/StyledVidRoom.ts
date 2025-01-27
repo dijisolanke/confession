@@ -76,7 +76,6 @@ const VideoItem = styled.div`
   position: relative;
   width: 30vw;
   height: 30vh;
-  overflow: hidden;
 
   .local-vid {
     transform: perspective(1000px) rotateY(46deg);
@@ -90,7 +89,7 @@ const VideoItem = styled.div`
     }
   }
   .local-overlay {
-    transform: perspective(1000px) rotateY(46deg);
+    transform: perspective(1000px) rotateY(56deg);
 
     @media (max-width: 850px) {
       transform: rotateY(0deg);
@@ -100,7 +99,7 @@ const VideoItem = styled.div`
   }
 
   .remote-vid {
-    transform: perspective(1000px) rotateY(-46deg); /* Mirror rotate to the left */
+    transform: perspective(1000px) rotateY(-56deg); /* Mirror rotate to the left */
 
     @media (max-width: 850px) {
       position: relative;
@@ -125,6 +124,7 @@ const VideoItem = styled.div`
     height: 16vh;
     width: 40vw;
     border-radius: 5%;
+    overflow: hidden;
   }
 `;
 
