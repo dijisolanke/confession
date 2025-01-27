@@ -550,7 +550,7 @@ const VideoChat = () => {
             className="local-overlay"
           />
           <video
-            ref={remoteVideoRef}
+            ref={localVideoRef}
             autoPlay
             muted
             playsInline
@@ -570,7 +570,7 @@ const VideoChat = () => {
             className="remote-overlay overlay"
           />
           <video
-            ref={localVideoRef}
+            ref={remoteVideoRef}
             autoPlay
             playsInline
             className="remote-vid"

@@ -30,23 +30,29 @@ const Root = styled.div`
     z-index: 4;
     margin-right: 10vw;
 
-    @media (max-width: 790px) {
+    @media (max-width: 850px) {
       gap: 2rem;
       margin-right: unset;
     }
 
     @media (max-width: 850px) {
       .top-container {
-        bottom: 17vh;
+        bottom: 18vh;
+        height: 50vh;
+        /* width: 40vw; */
+        transform: perspective(264px) rotateY(-307deg);
       }
       .bottom-container {
-        right: 23vw;
+        left: 7%;
+        transform: perspective(264px) rotateY(127deg);
+        bottom: 18vh;
+        height: 50vh;
       }
     }
   }
 
   .leave-button {
-    margin: 3rem auto 0 auto;
+    margin: 1rem auto 0 auto;
     display: flex;
   }
 
@@ -61,7 +67,8 @@ const Root = styled.div`
     align-self: center;
     @media (max-width: 850px) {
       filter: blur(1px);
-      margin-bottom: 25vh;
+      margin-left: 10%;
+      top: 35vh;
     }
   }
 `;
@@ -73,17 +80,22 @@ const VideoItem = styled.div`
 
   .local-vid {
     transform: perspective(1000px) rotateY(46deg);
+
     @media (max-width: 850px) {
-      transform: perspective(264px) rotateY(54deg);
-      height: 12vh;
+      border: solid 2px;
+      transform: rotateY(0deg);
+      height: 90%;
+      width: calc(100vw * 1.03);
+      margin-top: 1.6vh;
     }
   }
   .local-overlay {
     transform: perspective(1000px) rotateY(46deg);
+
     @media (max-width: 850px) {
-      transform: perspective(264px) rotateY(47deg);
-      height: 16vh;
-      width: 50vw;
+      transform: rotateY(0deg);
+      height: 100%;
+      width: 183vw;
     }
   }
 
@@ -94,8 +106,9 @@ const VideoItem = styled.div`
       position: relative;
       z-index: -1;
       transform: rotateY(0deg);
-      width: 40vw;
-      height: 9vh;
+      /* width: 183vw; */
+      width: calc(100vw * 1.03);
+      height: 90%;
       margin-top: 1.6vh;
     }
   }
@@ -104,7 +117,8 @@ const VideoItem = styled.div`
 
     @media (max-width: 850px) {
       transform: rotateY(0deg);
-      width: 40vw;
+      width: 183vw;
+      height: 100%;
     }
   }
 
