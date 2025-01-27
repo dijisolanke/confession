@@ -13,7 +13,7 @@ const Root = styled.div`
     height: 12.8vh;
     width: 40vw;
     object-fit: none;
-    filter: blur(3px);
+    filter: blur(2px);
     border-radius: 5px;
 
     @media (max-width: 790px) {
@@ -39,7 +39,6 @@ const Root = styled.div`
       .top-container {
         bottom: 18vh;
         height: 50vh;
-        /* width: 40vw; */
         transform: perspective(264px) rotateY(-307deg);
       }
       .bottom-container {
@@ -77,13 +76,14 @@ const VideoItem = styled.div`
   position: relative;
   width: 30vw;
   height: 30vh;
+  overflow: hidden;
 
   .local-vid {
     transform: perspective(1000px) rotateY(46deg);
 
     @media (max-width: 850px) {
       border: solid 2px;
-      transform: rotateY(0deg);
+      transform: scale(3) rotateY(0deg);
       height: 90%;
       width: calc(100vw * 1.03);
       margin-top: 1.6vh;
@@ -105,8 +105,7 @@ const VideoItem = styled.div`
     @media (max-width: 850px) {
       position: relative;
       z-index: -1;
-      transform: rotateY(0deg);
-      /* width: 183vw; */
+      transform: scale(3) rotateY(0deg);
       width: calc(100vw * 1.03);
       height: 90%;
       margin-top: 1.6vh;
