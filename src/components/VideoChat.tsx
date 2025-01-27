@@ -556,11 +556,6 @@ const VideoChat = () => {
             playsInline
             className="local-vid"
           />
-          {showPlayButton && (
-            <Button onClick={handleManualPlay}>
-              <Play className="text-white" size={24} />
-            </Button>
-          )}
           {/* <p>{partnerAlias}</p> */}
         </VideoItem>
 
@@ -575,6 +570,11 @@ const VideoChat = () => {
             playsInline
             className="remote-vid"
           />
+          {showPlayButton && (
+            <Button onClick={handleManualPlay}>
+              <Play className="text-white" size={24} />
+            </Button>
+          )}
           {/* <p>You</p> */}
         </VideoItem>
       </div>
