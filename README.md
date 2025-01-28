@@ -8,4 +8,12 @@
 
 # High Level Overview
 
-I built a [Link Server](https://github.com/dijisolanke/server/tree/main) hosted on Blender
+- I built a [Server](https://github.com/dijisolanke/server/tree/main) hosted on Blender.
+
+- The server uses [Metered](https://www.metered.ca/tools/openrelay/) as a TURN/STUN server
+
+- Using typescript and React I built a UI for creating a Lobby and unique private call rooms when pair's are established
+
+- The App is currently live on vercel [Here](https://confession-lake-five.vercel.app/)
+
+
