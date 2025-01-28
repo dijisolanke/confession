@@ -2,11 +2,14 @@
 
 ## It's a two way video chat designed for anonymous confessions
 
-<p align="center"> <img src="https://github.com/user-attachments/assets/7cb71234-780f-4d64-ab84-f89395cd6450" width="300" height="300" alt="Description of your image"> </p>
-<p align="center"> <img src="https://github.com/user-attachments/assets/516d75ed-4663-4e6b-9687-805c9170e062" width="300" heig3ht="300" alt=3"Des3ription of your image"> </p>
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/7cb71234-780f-4d64-ab84-f89395cd6450" width="300" height="300" alt="Description of your image"> 
+<img src="https://github.com/user-attachments/assets/516d75ed-4663-4e6b-9687-805c9170e062" width="300" heig3ht="300" alt=3"Des3ription of your image"> 
+</p>
 
-3
-# H3gh Level Overview
+
+
+# High Level Overview
 
 - I built a [Server](https://github.com/dijisolanke/server/tree/main) hosted on Blender.
 
