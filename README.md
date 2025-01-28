@@ -1,4 +1,4 @@
-### This is my favourite passion project. Its a work in progress
+#### *This is my favourite passion project. Its a work in progress*
 
 ## It's a two way video chat designed for anonymous confessions
 
