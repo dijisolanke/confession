@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
-import { handleRetrySetup } from "../utils/retrySetup";
-import { handleLeaveRoom } from "../utils/leaveHandler";
-import { createPeerConnection } from "../utils/createPeerConnection";
-import { cleanupVideoChat } from "../utils/cleanup";
+
+import {
+  Root,
+  Overlay,
+  VideoItem,
+  Button,
+  ShutterWrapper,
+  Shutter,
+} from "./StyledVidRoom";
+
+import backgroundImage from "/china.webp";
+import { Play } from "lucide-react";
+
+// import { preventDevToolsInspection } from "../utils/watcher";
 
 const socket = io("https://server-0w31.onrender.com");
 
@@ -47,8 +57,8 @@ const VideoChat = () => {
   const [partnerAlias] = useState<string>(
     location.state?.partnerAlias || "Anonymous"
   );
-  const [mediaError, setMediaError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // const [mediaError, setMediaError] = useState<string | null>(null);
+  // const [isLoading, setIsLoading] = useState(true);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -61,18 +71,46 @@ const VideoChat = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  // const [countdown, setCountdown] = useState(3);
+  const [shutterIsOpen, setShutterIsOpen] = useState(false);
+
+  const [showPlayButton, setShowPlayButton] = useState(true);
+
+  const handleManualPlay = () => {
+    if (remoteVideoRef.current && localVideoRef.current) {
+      localVideoRef.current.play().catch((error) => {
+        console.log("Local Manual play failed:", error);
+        // setMediaError(`Manual play failed: ${error}`);
+      });
+      remoteVideoRef.current.play().catch((error) => {
+        console.log("Remote manual play failed:", error);
+        // setMediaError(`Manual play failed: ${error}`);
+      });
+    }
+    setShowPlayButton(false);
+    setShutterIsOpen(true);
+  };
+
+  // const handleMediaPermissionDenied = useCallback(() => {
+  //   setMediaError("Media permission denied, returning to lobby");
+  //   console.log("Media permission denied, returning to lobby");
+  //   const timeoutId = setTimeout(() => navigate("/"), 3000);
+  //   return () => clearTimeout(timeoutId);
+  // }, [navigate]);
 
   const retrySetup = () => {
-    handleRetrySetup({
-      socket,
-      mediaStreamsEstablished,
-      isRetrying,
-      retryCount,
-      onRetryStart: () => setIsRetrying(true),
-      onRetryEnd: () => setIsRetrying(false),
-      onMaxRetriesReached: (message) => setMediaError(message),
-      setRetryCount,
-    });
+    if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
+      console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
+      setIsRetrying(true);
+      setRetryCount((prevCount) => prevCount + 1);
+      setTimeout(() => {
+        socket.emit("requestTurnCredentials");
+        setIsRetrying(false);
+      }, 2000);
+    } else if (!mediaStreamsEstablished && retryCount >= 3) {
+      console.log("Max retry attempts reached. Call setup failed.");
+      // setMediaError("Failed to establish connection after multiple attempts.");
+    }
   };
 
   const setupMediaStream = async () => {
@@ -102,6 +140,134 @@ const VideoChat = () => {
     }
   };
 
+  const createPeerConnection = async (iceServers: RTCIceServer[]) => {
+    try {
+      const pc = new RTCPeerConnection({ iceServers });
+      console.log("RTCPeerConnection created with ice servers:", iceServers);
+
+      // Add local stream tracks to peer connection
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          pc.addTrack(track, localStreamRef.current!);
+          console.log("Added local track to peer connection:", {
+            kind: track.kind,
+            enabled: track.enabled,
+            id: track.id,
+          });
+        });
+      }
+
+      // Handle ICE candidates
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          console.log("Sending ICE candidate to peer");
+          socket.emit("ice-candidate", {
+            candidate: event.candidate,
+            to: roomId,
+          });
+        }
+      };
+
+      // Log connection state changes
+      pc.oniceconnectionstatechange = () => {
+        console.log("ICE connection state:", pc.iceConnectionState);
+        if (pc.iceConnectionState === "disconnected") {
+          console.log("ICE connection disconnected, attempting restart...");
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        console.log("Connection state changed:", pc.connectionState);
+        dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
+
+        if (pc.connectionState === "connected") {
+          // setIsLoading(false);
+        } else if (
+          pc.connectionState === "failed" &&
+          !mediaStreamsEstablished &&
+          !isRetrying
+        ) {
+          console.log("Connection failed, closing peer connection...");
+          pc.close();
+          retrySetup();
+        } else if (pc.connectionState === "closed") {
+          navigate("/");
+        }
+      };
+
+      // Handle incoming remote tracks
+      pc.ontrack = (event) => {
+        console.log("Received remote track:", {
+          kind: event.track.kind,
+          enabled: event.track.enabled,
+          id: event.track.id,
+        });
+        if (remoteVideoRef.current && event.streams[0]) {
+          remoteVideoRef.current.srcObject = event.streams[0];
+          console.log("Set remote video stream:", {
+            streamId: event.streams[0].id,
+            tracks: event.streams[0].getTracks().length,
+          });
+
+          // Add this block to attempt autoplay
+          const playPromise = remoteVideoRef.current.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((error) => {
+              console.log(
+                "Autoplay was prevented. User interaction may be needed.",
+                error
+              );
+              setShowPlayButton(true);
+            });
+          }
+          // Ensure both streams are established before setting callEstablished
+          if (
+            localVideoRef.current?.srcObject instanceof MediaStream &&
+            remoteVideoRef.current.srcObject instanceof MediaStream
+          ) {
+            const localStream = localVideoRef.current.srcObject;
+            const remoteStream = remoteVideoRef.current.srcObject;
+
+            // Verify both streams have active audio and video tracks
+            const hasLocalTracks =
+              localStream.getVideoTracks().some((track) => track.enabled) &&
+              localStream.getAudioTracks().some((track) => track.enabled);
+            const hasRemoteTracks =
+              remoteStream.getVideoTracks().some((track) => track.enabled) &&
+              remoteStream.getAudioTracks().some((track) => track.enabled);
+
+            if (hasLocalTracks && hasRemoteTracks) {
+              setMediaStreamsEstablished(true);
+              // setIsLoading(false);
+              // Reset retry count since connection is successful
+              setRetryCount(0);
+            }
+          }
+        }
+      };
+
+      pc.onnegotiationneeded = async () => {
+        try {
+          dispatch({ type: "SET_MAKING_OFFER", payload: true });
+          await pc.setLocalDescription();
+          socket.emit("offer", {
+            offer: pc.localDescription,
+            to: roomId,
+          });
+        } catch (err) {
+          console.error(err);
+        } finally {
+          dispatch({ type: "SET_MAKING_OFFER", payload: false });
+        }
+      };
+
+      return pc;
+    } catch (error) {
+      console.error("Error creating peer connection:", error);
+      throw error;
+    }
+  };
+
   const setupCall = async () => {
     if (isRetrying || mediaStreamsEstablished) return;
     console.log("Setting up new call...");
@@ -111,15 +277,39 @@ const VideoChat = () => {
   };
 
   useEffect(() => {
+    // if (mediaError) {
+    //   console.log("1Media permission Check", mediaError);
+    //   if (mediaError === "Media permission denied, returning to lobby") {
+    //     console.log("2Media permission Check", mediaError);
+    //     const timer = setInterval(() => {
+    //       setCountdown((prev) => {
+    //         if (prev <= 1) {
+    //           clearInterval(timer);
+    //           return 0;
+    //         }
+    //         return prev - 1;
+    //       });
+    //     }, 1000);
+    //     return () => clearInterval(timer);
+    //   }
+    // }
+
     let isComponentMounted = true;
 
-    const leaveChat = () => {
-      handleLeaveRoom({
-        peerConnection: peerConnectionRef,
-        socket,
-        localVideoRef,
-        navigate,
-      });
+    const handleLeaveRoom = () => {
+      if (peerConnectionRef.current) {
+        socket.emit("leaveRoom");
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+      // Clean up video tracks
+      if (localVideoRef.current?.srcObject instanceof MediaStream) {
+        localVideoRef.current.srcObject
+          .getTracks()
+          .forEach((track) => track.stop());
+      }
+      navigate("/");
+      window.location.reload();
     };
 
     console.log("VideoChat mounted with:", {
@@ -138,7 +328,7 @@ const VideoChat = () => {
 
       try {
         console.log("Received TURN credentials, beginning setup...");
-        setIsLoading(true);
+        // setIsLoading(true);
 
         const stream = await setupMediaStream();
         localStreamRef.current = stream; // This line was missing
@@ -148,29 +338,14 @@ const VideoChat = () => {
           audioTracks: stream.getAudioTracks().length,
         });
 
-        const pc = await createPeerConnection({
-          iceServers: credentials,
-          localStreamRef,
-          remoteVideoRef,
-          localVideoRef,
-          socket,
-          roomId: roomId!, // Add ! since roomId is from useParams
-          dispatch,
-          setIsLoading,
-          setMediaStreamsEstablished,
-          navigate,
-          retrySetup,
-          mediaStreamsEstablished,
-          isRetrying,
-          setRetryCount,
-        });
+        const pc = await createPeerConnection(credentials);
         peerConnectionRef.current = pc;
 
         socket.emit("joinRoom", { roomId });
         console.log("Joined room:", roomId);
       } catch (error) {
-        console.error("Setup failed:", error);
-        setMediaError(error instanceof Error ? error.message : "Setup failed");
+        console.error("Setup failed: ", error);
+        // setMediaError(error instanceof Error ? error.message : "Setup failed");
         retrySetup();
       }
     };
@@ -221,7 +396,7 @@ const VideoChat = () => {
         });
       } catch (err) {
         console.error("Setup failed:", err);
-        setMediaError(err instanceof Error ? err.message : "Setup failed");
+        // setMediaError(err instanceof Error ? err.message : "Setup failed");
         if (!mediaStreamsEstablished) {
           retrySetup();
         }
@@ -241,7 +416,7 @@ const VideoChat = () => {
           new RTCSessionDescription(answer)
         );
         console.log("Set remote description from answer");
-        setIsLoading(false);
+        // setIsLoading(false);
       }
     };
 
@@ -280,55 +455,142 @@ const VideoChat = () => {
     socket.on("answer", handleAnswer);
     socket.on("ice-candidate", handleIceCandidate);
     socket.on("partnerLeft", handlePartnerLeft);
+    // socket.on("mediaPermissionDenied", handleMediaPermissionDenied);
 
     setupCall();
 
+    //dev tools watcher
+    // const cleanup = preventDevToolsInspection();
+
     return () => {
       isComponentMounted = false;
-      leaveChat();
-      cleanupVideoChat({
-        localStreamRef,
-        remoteVideoRef,
-        localVideoRef,
-        peerConnectionRef,
-        socket,
-        setRetryCount,
-      });
+      console.log("Cleaning up...");
+
+      setRetryCount(0);
+
+      // Clean up local stream
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          track.stop();
+          console.log("Stopped track:", track.kind);
+          localStreamRef.current = null;
+        });
+      }
+
+      // Clean up remote stream
+      if (
+        remoteVideoRef.current &&
+        remoteVideoRef.current.srcObject instanceof MediaStream
+      ) {
+        const remoteStream = remoteVideoRef.current.srcObject;
+        remoteStream.getTracks().forEach((track) => {
+          track.stop();
+          console.log("Stopped remote track:", track.kind);
+        });
+        remoteVideoRef.current.srcObject = null;
+      }
+
+      if (peerConnectionRef.current) {
+        // Close all peer connection transceivers
+        peerConnectionRef.current.getTransceivers().forEach((transceiver) => {
+          if (transceiver.stop) {
+            transceiver.stop();
+          }
+        });
+
+        // Close the peer connection
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+      }
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = null;
+      }
+
+      try {
+        navigator.mediaDevices
+          .getUserMedia({ audio: false, video: false })
+          .catch(() => console.log("Permissions reset"));
+      } catch (err) {
+        console.log("Could not reset permissions");
+      }
+
+      // cleanup();
+      // Remove socket listeners
+      handleLeaveRoom();
+      // socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
+      socket.off("partnerLeft");
+      socket.off("turnCredentials");
+      socket.off("offer");
+      socket.off("answer");
+      socket.off("ice-candidate");
+      socket.disconnect(); // Properly disconnect socket
     };
-  }, [roomId, location.state?.isInitiator, navigate, partnerAlias]); //might remove partnerAlias
+  }, [
+    roomId,
+    location.state?.isInitiator,
+    navigate,
+    partnerAlias,
+    // handleMediaPermissionDenied,
+    // mediaError,
+  ]); //might remove partnerAlias
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-      <h1 className="text-xl font-bold">Video Chat with {partnerAlias}</h1>
-      {isLoading && <p>Initializing video chat...</p>}
-      {mediaError && <p className="text-red-500">Error: {mediaError}</p>}
-      <p className="text-sm text-gray-600">
+    <Root>
+      <img className="bg-img" src="/blk.webp" />
+
+      {/* {isLoading && <p>Initializing video chat...</p>} */}
+      {/* {mediaError && <p className="text-red-500">Error: {mediaError}</p>} */}
+      {/* {mediaError === "Media permission denied, returning to lobby" && (
+        <p>Redirecting to lobby in {countdown} seconds...</p>
+      )} */}
+      {/* <p className="text-sm text-gray-600">
         Connection State: {rtcState.connectionState}
-      </p>
-      <div className="flex gap-4">
-        <div className="relative">
+      </p> */}
+
+      <div className="videos-container">
+        <VideoItem className="top-container">
+          <Overlay
+            backgroundImage={backgroundImage}
+            className="local-overlay"
+          />
           <video
-            controls
             ref={localVideoRef}
+            // src="/public/sample.mp4"
             autoPlay
             muted
             playsInline
-            className="w-64 h-48 bg-gray-200 rounded"
+            className="local-vid"
           />
-          <p className="absolute bottom-2 left-2 text-white text-sm">You</p>
-        </div>
-        <div className="relative">
+          <Shutter className="top" isOpen={shutterIsOpen} />
+          {/* <p>{partnerAlias}</p> */}
+        </VideoItem>
+
+        <VideoItem className="bottom-container">
+          <Overlay
+            backgroundImage={backgroundImage}
+            className="remote-overlay overlay"
+          />
           <video
-            controls
+            // src="/public/sample.mp4"
             ref={remoteVideoRef}
             autoPlay
             playsInline
-            className="w-64 h-48 bg-gray-200 rounded"
+            className="remote-vid"
           />
-          <p className="absolute bottom-2 left-2 text-white text-sm">
-            {partnerAlias}
-          </p>
-        </div>
+          <ShutterWrapper>
+            <Shutter className="bottom" isOpen={shutterIsOpen} />
+          </ShutterWrapper>
+          {showPlayButton && (
+            <Button onClick={handleManualPlay}>
+              <Play className="text-white" size={24} />
+            </Button>
+          )}
+          {/* <p>You</p> */}
+        </VideoItem>
       </div>
       <button
         onClick={() => {
@@ -340,15 +602,15 @@ const VideoChat = () => {
           if (peerConnectionRef.current) {
             peerConnectionRef.current.close();
           }
-          socket.emit("leaveRoom"); // Add this line
+          socket.emit("leaveRoom");
           navigate("/");
           window.location.reload();
         }}
-        className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+        className="leave-button"
       >
         Leave Chat
       </button>
-    </div>
+    </Root>
   );
 };
 

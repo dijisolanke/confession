@@ -38,14 +38,16 @@ const Lobby: React.FC = () => {
     e.preventDefault();
     if (alias) {
       socket.emit("setAlias", alias);
-      //disable button on click
+      // disable button on click
       setButtonState(true);
     }
   };
 
   return (
     <Root>
-      <h1>Anonymous</h1>
+      <h1>
+        Confession📦<span>TM</span>
+      </h1>
       <form onSubmit={handleJoin}>
         <InputContainer>
           <StyledInput
