@@ -1,8 +1,17 @@
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 
 interface OverlayProps {
   backgroundImage: string;
 }
+
+const openShutter = keyframes`
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+`;
 
 const Root = styled.div`
   display: flex;
@@ -28,11 +37,18 @@ const Root = styled.div`
     gap: 3rem;
     justify-content: center;
     z-index: 4;
-    margin-right: 10vw;
+    /* margin-right: 10vw; */
 
     @media (max-width: 850px) {
       gap: 2rem;
       margin-right: unset;
+    }
+
+    .top-container {
+      transform: perspective(1000px) rotateY(48deg);
+    }
+    .bottom-container {
+      transform: perspective(1000px) rotateY(-46deg);
     }
 
     @media (max-width: 850px) {
@@ -74,11 +90,13 @@ const Root = styled.div`
 
 const VideoItem = styled.div`
   position: relative;
-  width: 30vw;
-  height: 30vh;
+  width: unset;
+  /* width: 30vw; */
+  height: 13vh;
+  /* height: 30vh; */
 
   .local-vid {
-    transform: perspective(1000px) rotateY(57deg);
+    /* transform: perspective(1000px) rotateY(57deg); */
 
     @media (max-width: 850px) {
       border: solid 2px;
@@ -89,7 +107,7 @@ const VideoItem = styled.div`
     }
   }
   .local-overlay {
-    transform: perspective(1000px) rotateY(57deg);
+    /* transform: perspective(1000px) rotateY(57deg); */
 
     @media (max-width: 850px) {
       transform: rotateY(0deg);
@@ -99,7 +117,7 @@ const VideoItem = styled.div`
   }
 
   .remote-vid {
-    transform: perspective(1000px) rotateY(-56deg); /* Mirror rotate to the left */
+    /* transform: perspective(1000px) rotateY(-56deg);  */
 
     @media (max-width: 850px) {
       position: relative;
@@ -111,7 +129,7 @@ const VideoItem = styled.div`
     }
   }
   .remote-overlay {
-    transform: perspective(1000px) rotateY(-46deg); /* Mirror rotate to the left */
+    /* transform: perspective(1000px) rotateY(-46deg);  */
 
     @media (max-width: 850px) {
       transform: rotateY(0deg);
@@ -126,6 +144,26 @@ const VideoItem = styled.div`
     border-radius: 5%;
     overflow: hidden;
   }
+`;
+const ShutterWrapper = styled.div`
+  width: auto;
+  height: auto;
+
+  .bottom {
+    transform-origin: right;
+  }
+`;
+
+const Shutter = styled.div<{ isOpen: boolean }>`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #211206;
+  transform-origin: left;
+  transition: transform 2.5s ease-in-out;
+  animation: ${(props) => (props.isOpen ? openShutter : "none")} 0.5s forwards;
 `;
 
 // Styled component for the overlay image with typed props
@@ -170,4 +208,4 @@ const Button = styled.button`
   }
 `;
 
-export { Root, Overlay, VideoItem, Button };
+export { Root, Overlay, VideoItem, Button, ShutterWrapper, Shutter };

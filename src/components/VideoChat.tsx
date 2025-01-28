@@ -2,7 +2,14 @@ import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 
-import { Root, Overlay, VideoItem, Button } from "./StyledVidRoom";
+import {
+  Root,
+  Overlay,
+  VideoItem,
+  Button,
+  ShutterWrapper,
+  Shutter,
+} from "./StyledVidRoom";
 
 import backgroundImage from "/china.webp";
 import { Play } from "lucide-react";
@@ -65,22 +72,23 @@ const VideoChat = () => {
   const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   // const [countdown, setCountdown] = useState(3);
+  const [shutterIsOpen, setShutterIsOpen] = useState(false);
 
-  const [showPlayButton, setShowPlayButton] = useState(false);
+  const [showPlayButton, setShowPlayButton] = useState(true);
 
   const handleManualPlay = () => {
-    if (remoteVideoRef.current) {
-      remoteVideoRef.current
-        .play()
-        .then(() => {
-          setShowPlayButton(false);
-          console.log("Manual play successful");
-        })
-        .catch((error) => {
-          console.log("Manual play failed:", error);
-          // setMediaError(`Manual play failed: ${error}`);
-        });
+    if (remoteVideoRef.current && localVideoRef.current) {
+      localVideoRef.current.play().catch((error) => {
+        console.log("Local Manual play failed:", error);
+        // setMediaError(`Manual play failed: ${error}`);
+      });
+      remoteVideoRef.current.play().catch((error) => {
+        console.log("Remote manual play failed:", error);
+        // setMediaError(`Manual play failed: ${error}`);
+      });
     }
+    setShowPlayButton(false);
+    setShutterIsOpen(true);
   };
 
   // const handleMediaPermissionDenied = useCallback(() => {
@@ -551,11 +559,13 @@ const VideoChat = () => {
           />
           <video
             ref={localVideoRef}
+            // src="/public/sample.mp4"
             autoPlay
             muted
             playsInline
             className="local-vid"
           />
+          <Shutter className="top" isOpen={shutterIsOpen} />
           {/* <p>{partnerAlias}</p> */}
         </VideoItem>
 
@@ -565,11 +575,15 @@ const VideoChat = () => {
             className="remote-overlay overlay"
           />
           <video
+            // src="/public/sample.mp4"
             ref={remoteVideoRef}
             autoPlay
             playsInline
             className="remote-vid"
           />
+          <ShutterWrapper>
+            <Shutter className="bottom" isOpen={shutterIsOpen} />
+          </ShutterWrapper>
           {showPlayButton && (
             <Button onClick={handleManualPlay}>
               <Play className="text-white" size={24} />
@@ -588,7 +602,7 @@ const VideoChat = () => {
           if (peerConnectionRef.current) {
             peerConnectionRef.current.close();
           }
-          socket.emit("leaveRoom"); // Add this line
+          socket.emit("leaveRoom");
           navigate("/");
           window.location.reload();
         }}
