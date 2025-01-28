@@ -7,3 +7,4 @@
 ![Screenshot 2025-01-28 at 17 21 02](https://github.com/user-attachments/assets/7cb71234-780f-4d64-ab84-f89395cd6450)
 
 
+<img src="https://github.com/user-attachments/assets/7cb71234-780f-4d64-ab84-f89395cd6450" width="300" height="300" alt="Description of your image">
