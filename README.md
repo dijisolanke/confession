@@ -100,6 +100,7 @@ Join room
 Begin offer/answer exchange
 
 ↓
+
 If connection fails, retry setupCall()
 
 
