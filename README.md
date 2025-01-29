@@ -39,7 +39,8 @@ This way, you and your friend can start playing together quickly and easily, wit
 ### React
 The frontend was built using React, a popular javascript library for building Web applications.
 
-I set this up using `npm create vite@latest confession --template react-ts`
+I set this up using 
+`npm create vite@latest confession --template react-ts`
 
 I used:
   - Styled Components for css styling
