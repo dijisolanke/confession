@@ -11,7 +11,7 @@
 
 # High Level Overview
 
-- I built a [Server](https://github.com/dijisolanke/server/tree/main) hosted on Blender.
+- I built a [Server](https://github.com/dijisolanke/server/tree/main) hosted on Blender to handle call connections and setup private chat room url creation.
 
 - The server uses [Metered](https://www.metered.ca/tools/openrelay/) as a TURN/STUN server
 
