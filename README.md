@@ -20,7 +20,7 @@
 - The App is currently live on vercel [Here](https://confession-lake-five.vercel.app/)
 
 ## Technologies
-### WebRTC
+### [WebRTC](https://blog.mozilla.org/webrtc/perfect-negotiation-in-webrtc/)
 The web chat functionality (video, audio, text) was built by implementing the `WebRTC` protocol. `WebRTC` is a protocol that allows for direct peer-to-peer connections so that users can send and receive data without going through a central service. It is built into most browsers!
 
 In order to start the peer-to-peer connection, however, the users need to first somehow find each other. This is done by a procedure known as "negotiation". For this, I needed to create a central service that users will first connect to and find out about each other. For this part, I decided to implement it with the [Server](https://github.com/dijisolanke/server/tree/main) so users connect to the server which handles connecting and call negotiation management
