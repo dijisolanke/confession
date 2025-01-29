@@ -19,7 +19,7 @@
 
 - The App is currently live on vercel [Here](https://confession-lake-five.vercel.app/)
 
-## Technologies
+## ♻️Technologies
 ### [WebRTC](https://blog.mozilla.org/webrtc/perfect-negotiation-in-webrtc/)
 The web chat functionality (video, audio, text) was built by implementing the `WebRTC` protocol. `WebRTC` is a protocol that allows for direct peer-to-peer connections so that users can send and receive data without going through a central service. It is built into most browsers!
 
