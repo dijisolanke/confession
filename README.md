@@ -43,6 +43,7 @@ I used
   - Styled Components for css styling
   - Socket a JavaScript library that enables real-time, bidirectional communication between a client and server
   - Simple peer Simple-peer is a lightweight JavaScript library that simplifies WebRTC peer-to-peer communication.
+    
 `npm install socket.io-client simple-peer styled-components react-router-dom`
 
 ### [Metered](https://www.metered.ca/tools/openrelay/) as a TURN/STUN server
