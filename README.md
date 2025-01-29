@@ -46,7 +46,7 @@ It helps you take turns speaking nicely.
 
 This way, no matter who starts talking first, you'll always be able to have a smooth conversation without any mix-ups!
 
-### React
+### [React](https://vite.dev/guide/#scaffolding-your-first-vite-project)
 The frontend was built using React, a popular javascript library for building Web applications.
 
 I set this up using 
