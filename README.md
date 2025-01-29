@@ -108,4 +108,5 @@ If connection fails, retry setupCall()
 List of things I will add in time:
 - Add countdown to the UI so calls timeout after 10 mins
 - Add tests for react components
+- Separate the logic and clean up the codebase
 
