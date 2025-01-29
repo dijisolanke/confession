@@ -66,7 +66,7 @@ Imagine you and your friend want to play catch, but you're in different rooms of
 
 ## 📝Key learnings
 
-### *The hardest part was understanding the Connection Process Flow with the crucial detail being ensuring one of the callers is polite in order to prevent race conditions*
+#### *The hardest part was understanding the Connection Process Flow with the crucial detail being ensuring one of the callers is polite in order to prevent race conditions*
 
 setupCall()
 
