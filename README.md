@@ -133,7 +133,7 @@ Comment out the following in this file`src/components/VideoChat.tsx`
       // navigate("/");
       // window.location.reload();
   ```
-Go to the video element, add prop src and set it to a random video url
+Go to the video element, add prop src and set it to a random video url like so:
 
   ```sh
       <video
