@@ -113,25 +113,48 @@ If connection fails, retry setupCall()
     ```sh
     npm install
     ```
-3. Run the client in development mode
+3. Run the app in development mode
     ```sh
+    cd confession
     npm run dev
     ```
- - Concurrently is used to run the server and client at the same time
- - You can also run the the app by running the server and client separately.
-    ```sh
-    cd backend
-    npm run dev
-    ```
-    *Open new terminal*
-    ```sh
-    cd frontend
-    npm start
-    ```
+Comment out the following in this file`src/components/VideoChat.tsx`
+    
+  ```sh
+     } else if (pc.connectionState === "closed") {
+          // navigate("/");
+        }
+
+        if (localVideoRef.current?.srcObject instanceof MediaStream) {
+        localVideoRef.current.srcObject
+          .getTracks()
+          .forEach((track) => track.stop());
+      }
+      // navigate("/");
+      // window.location.reload();
+  ```
+Go to the video element, add prop src and set it to a random video url
+
+  ```sh
+      <video
+            src="https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExbDJrcnR4ZzN5bjliZGg0cDA2eWw4d2M2NnUwamd0bHRpbTlrMGppdSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oEjHBa34dVLv0jnoc/giphy.webp"
+            // ref={remoteVideoRef}
+            autoPlay
+            playsInline
+            className="remote-vid"
+          />
+  ```
+Comment out the following in this file`src/components/Lobby.tsx`
+
+  ```sh
+     if (alias) {
+      socket.emit("setAlias", alias);
+      // disable button on click
+      // setButtonState(true);
+    }
+  ```
 
 4. Open the browser and go to http://localhost:5173.
-
-
 
 
 
