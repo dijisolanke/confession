@@ -31,14 +31,19 @@ There were two great resources that I referenced to learn how the negotiation al
 3. [WebRTC Documentation](https://blog.mozilla.org/webrtc/perfect-negotiation-in-webrtc/) which talks about the history of WebRTC and common problems that have been faced
 
 #### *Explain like im 5*
-Imagine you and your friend are trying to talk to each other using special walkie-talkies. These walkie-talkies are so cool that they can work even when you're far apart, like in different houses!
+Imagine you and your friend are trying to talk to each other using special walkie-talkies. 
+These walkie-talkies are so cool that they can work even when you're far apart, like in different houses!
 Now, sometimes both of you might try to talk at the same time. That's where being "polite" comes in.
-One of you is the "polite" friend. This friend is always ready to stop talking and listen if the other friend starts speaking. It's like saying, "Oh, you go ahead, I'll listen!"4
-The other friend is "impolite". This friend keeps talking even if the polite friend tries to say something at the same time.4
+One of you is the "polite" friend. This friend is always ready to stop talking and listen if the other friend starts speaking. It's like saying, "Oh, you go ahead, I'll listen!"
+The other friend is "impolite". This friend keeps talking even if the polite friend tries to say something at the same time.
+
 Having one friend be polite is important because:
 It stops both of you from talking over each other all the time.
+
 It makes sure your conversation doesn't get stuck or confused.
+
 It helps you take turns speaking nicely.
+
 This way, no matter who starts talking first, you'll always be able to have a smooth conversation without any mix-ups!
 
 ### React
