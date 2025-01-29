@@ -25,9 +25,9 @@ The web chat functionality (video, audio, text) was built by implementing the `W
 
 In order to start the peer-to-peer connection, however, the users need to first somehow find each other. This is done by a procedure known as "negotiation". For this, I needed to create a central service that users will first connect to and find out about each other. For this part, I decided to implement it with the [Server](https://github.com/dijisolanke/server/tree/main) so users connect to the server which handles connecting and call negotiation management
 
-There were two great resources that I referenced to learn how the negotiation all works:
-1. [Blog post](https://webrtchacks.com/min-duration-series-part-1-perfect-negotiation/) that discusses a the "perfect negotiation" design.
-2. [Developer documentation](https://w3c.github.io/webrtc-pc/#perfect-negotiation-example)  that provides an updated version with samples and comparisons to the previous implementation from the first post.
+There were three useful resources that I referenced to learn how the negotiation all works:
+1. [Blog post](https://webrtchacks.com/min-duration-series-part-1-perfect-negotiation/) discusses the "perfect negotiation" design.
+2. [Developer documentation](https://w3c.github.io/webrtc-pc/#perfect-negotiation-example) provides an updated version of the "perfect negotiation" with examples and comparisons to the previous implementation from the first post.
 3. [WebRTC Documentation](https://blog.mozilla.org/webrtc/perfect-negotiation-in-webrtc/) which talks about the history of WebRTC and common problems that have been faced
 
 #### *Explain like im 5*
