@@ -105,7 +105,7 @@ If connection fails, retry setupCall()
 
 
 ## ⚒️ Extending the project
-List of things I would like to do if I had more time:
+List of things I will add in time:
 - Add countdown to the UI so calls timeout after 10 mins
 - Add tests for react components
 
