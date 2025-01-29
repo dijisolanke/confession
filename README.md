@@ -31,10 +31,15 @@ There were two great resources that I referenced to learn how the negotiation al
 3. [WebRTC Documentation](https://blog.mozilla.org/webrtc/perfect-negotiation-in-webrtc/) which talks about the history of WebRTC and common problems that have been faced
 
 #### *Explain like im 5*
-Okay, let's imagine you and your friend want to play together, but you're in different houses. WebRTC perfect negotiation is like a special way to help you two connect and play, no matter who calls first or what games you want to play.
-It's like having a magic phone that works the same way whether you're the one calling or the one answering. You don't have to worry about who does what - the magic phone takes care of everything!1
-The best part is, this magic phone works the same for both of you. You don't need different instructions for calling or answering - it's all the same!1
-This way, you and your friend can start playing together quickly and easily, without worrying about complicated rules or who needs to do what first.
+Imagine you and your friend are trying to talk to each other using special walkie-talkies. These walkie-talkies are so cool that they can work even when you're far apart, like in different houses!
+Now, sometimes both of you might try to talk at the same time. That's where being "polite" comes in.
+One of you is the "polite" friend. This friend is always ready to stop talking and listen if the other friend starts speaking. It's like saying, "Oh, you go ahead, I'll listen!"4
+The other friend is "impolite". This friend keeps talking even if the polite friend tries to say something at the same time.4
+Having one friend be polite is important because:
+It stops both of you from talking over each other all the time.
+It makes sure your conversation doesn't get stuck or confused.
+It helps you take turns speaking nicely.
+This way, no matter who starts talking first, you'll always be able to have a smooth conversation without any mix-ups!
 
 ### React
 The frontend was built using React, a popular javascript library for building Web applications.
