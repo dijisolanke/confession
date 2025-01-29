@@ -20,3 +20,22 @@
 - The App is currently live on vercel [Here](https://confession-lake-five.vercel.app/)
 
 
+### Key learnings
+
+- ### Connection Process Flow
+
+setupCall()
+↓
+Request TURN credentials
+↓
+Receive credentials
+↓
+Setup media stream (camera/mic)
+↓
+Create RTCPeerConnection
+↓
+Add local tracks
+↓
+Join room
+↓
+Begin offer/answer exchange
