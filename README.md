@@ -36,8 +36,14 @@ It's like having a magic phone that works the same way whether you're the one ca
 The best part is, this magic phone works the same for both of you. You don't need different instructions for calling or answering - it's all the same!1
 This way, you and your friend can start playing together quickly and easily, without worrying about complicated rules or who needs to do what first.
 
-### Frontend
+### React
 The frontend was built using React, a popular javascript library for building Web applications.
+I set this up using `npm create vite@latest confession --template react-ts`
+I used 
+  - Styled Components for css styling
+  - Socket a JavaScript library that enables real-time, bidirectional communication between a client and server
+  - Simple peer Simple-peer is a lightweight JavaScript library that simplifies WebRTC peer-to-peer communication.
+`npm install socket.io-client simple-peer styled-components react-router-dom`
 
 ### [Metered](https://www.metered.ca/tools/openrelay/) as a TURN/STUN server
 STUN and TURN servers are essential for enabling WebRTC's peer-to-peer communication in various network environments. STUN servers help devices discover their public IP addresses, facilitating direct connections when possible. TURN servers provide a fallback option when direct communication is blocked by firewalls or restrictive NATs (Network Address Translation). 
