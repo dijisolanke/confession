@@ -20,9 +20,9 @@
 - The App is currently live on vercel [Here](https://confession-lake-five.vercel.app/)
 
 
-### Key learnings
+## Key learnings
 
-- ### Connection Process Flow
+### The hardest part was understanding the Connection Process Flow
 
 setupCall()
 
@@ -53,3 +53,10 @@ Join room
 ↓
 
 Begin offer/answer exchange
+
+
+## ⚒️ Extending the project
+List of things I would like to do if I had more time:
+- Add countdown to the UI so calls timeout after 10 mins
+- Add tests for react components
+
