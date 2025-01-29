@@ -38,8 +38,10 @@ This way, you and your friend can start playing together quickly and easily, wit
 
 ### React
 The frontend was built using React, a popular javascript library for building Web applications.
+
 I set this up using `npm create vite@latest confession --template react-ts`
-I used 
+
+I used:
   - Styled Components for css styling
   - Socket a JavaScript library that enables real-time, bidirectional communication between a client and server
   - Simple peer Simple-peer is a lightweight JavaScript library that simplifies WebRTC peer-to-peer communication.
