@@ -103,6 +103,38 @@ Begin offer/answer exchange
 If connection fails, retry setupCall()
 
 
+
+## 🚀 Quick Start
+1. Clone this repository
+    ```sh
+    git clone git@github.com:dijisolanke/confession.git
+    ```
+2. Install dependencies
+    ```sh
+    npm install
+    ```
+3. Run the client in development mode
+    ```sh
+    npm run dev
+    ```
+ - Concurrently is used to run the server and client at the same time
+ - You can also run the the app by running the server and client separately.
+    ```sh
+    cd backend
+    npm run dev
+    ```
+    *Open new terminal*
+    ```sh
+    cd frontend
+    npm start
+    ```
+
+4. Open the browser and go to http://localhost:5173.
+
+
+
+
+
 ## ⚒️ Extending the project
 List of things I will add in time:
 - Add countdown to the UI so calls timeout after 10 mins
