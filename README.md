@@ -64,7 +64,7 @@ STUN and TURN servers are essential for enabling WebRTC's peer-to-peer communica
 #### *Explain like im 5*
 Imagine you and your friend want to play catch, but you're in different rooms of a big house. STUN servers are like a helper who tells you which window to stand by so you can see each other. Most of the time, once you know where to stand, you can throw the ball directly to each other. But sometimes, there are walls in the way, and you can't see each other. That's when TURN servers come in. They're like another friend who stands where both of you can see them, catches the ball from you, and throws it to your friend. This way, you can still play catch even when you can't see each other directly!
 
-## Key learnings📝
+## 📝Key learnings
 
 ### *The hardest part was understanding the Connection Process Flow with the crucial detail being ensuring one of the callers is polite in order to prevent race conditions*
 
