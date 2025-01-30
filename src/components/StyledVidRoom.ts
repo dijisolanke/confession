@@ -110,7 +110,7 @@ const VideoItem = styled.div`
     }
   }
   .local-overlay {
-    /* transform: perspective(1000px) rotateY(57deg); */
+    transform: scale(2);
 
     @media (max-width: 850px) {
       transform: rotateY(0deg);
@@ -120,8 +120,6 @@ const VideoItem = styled.div`
   }
 
   .remote-vid {
-    /* transform: perspective(1000px) rotateY(-56deg);  */
-
     @media (max-width: 850px) {
       position: relative;
       z-index: -1;
@@ -132,7 +130,7 @@ const VideoItem = styled.div`
     }
   }
   .remote-overlay {
-    /* transform: perspective(1000px) rotateY(-46deg);  */
+    transform: scale(2);
 
     @media (max-width: 850px) {
       transform: rotateY(0deg);
