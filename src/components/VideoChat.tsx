@@ -12,7 +12,9 @@ import {
 } from "./StyledVidRoom";
 
 import backgroundImage from "/china.webp";
-import { Play } from "lucide-react";
+import { Unlock } from "lucide-react";
+import useSound from "use-sound";
+import doorSound from "/doorSound.mp3";
 
 // import { preventDevToolsInspection } from "../utils/watcher";
 
@@ -75,6 +77,7 @@ const VideoChat = () => {
   const [shutterIsOpen, setShutterIsOpen] = useState(false);
 
   const [showPlayButton, setShowPlayButton] = useState(true);
+  const [playSound] = useSound(doorSound, { preload: true });
 
   const handleManualPlay = () => {
     if (remoteVideoRef.current && localVideoRef.current) {
@@ -89,6 +92,7 @@ const VideoChat = () => {
     }
     setShowPlayButton(false);
     setShutterIsOpen(true);
+    playSound();
   };
 
   // const handleMediaPermissionDenied = useCallback(() => {
@@ -558,14 +562,16 @@ const VideoChat = () => {
             className="local-overlay"
           />
           <video
-            ref={localVideoRef}
             // src="/public/sample.mp4"
+            ref={localVideoRef}
             autoPlay
             muted
             playsInline
             className="local-vid"
           />
-          <Shutter className="top" isOpen={shutterIsOpen} />
+          <ShutterWrapper>
+            <Shutter className="top" isOpen={shutterIsOpen} />
+          </ShutterWrapper>
           {/* <p>{partnerAlias}</p> */}
         </VideoItem>
 
@@ -586,7 +592,7 @@ const VideoChat = () => {
           </ShutterWrapper>
           {showPlayButton && (
             <Button onClick={handleManualPlay}>
-              <Play className="text-white" size={24} />
+              <Unlock className="text-white" size={34} />
             </Button>
           )}
           {/* <p>You</p> */}
