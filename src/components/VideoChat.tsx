@@ -312,8 +312,8 @@ const VideoChat = () => {
           .getTracks()
           .forEach((track) => track.stop());
       }
-      navigate("/");
-      window.location.reload();
+      // navigate("/");
+      // window.location.reload();
     };
 
     console.log("VideoChat mounted with:", {
@@ -572,11 +572,6 @@ const VideoChat = () => {
           <ShutterWrapper>
             <Shutter className="top" isOpen={shutterIsOpen} />
           </ShutterWrapper>
-          {showPlayButton && (
-            <Button onClick={handleManualPlay}>
-              <Unlock className="text-white" size={34} />
-            </Button>
-          )}
           {/* <p>{partnerAlias}</p> */}
         </VideoItem>
 
@@ -595,6 +590,11 @@ const VideoChat = () => {
           <ShutterWrapper>
             <Shutter className="bottom" isOpen={shutterIsOpen} />
           </ShutterWrapper>
+          {showPlayButton && (
+            <Button onClick={handleManualPlay}>
+              <Unlock className="text-white" size={34} />
+            </Button>
+          )}
           {/* <p>You</p> */}
         </VideoItem>
       </div>
