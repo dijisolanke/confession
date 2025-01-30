@@ -61,7 +61,7 @@ const Root = styled.div`
         transform: perspective(264px) rotateY(-307deg);
       }
       .bottom-container {
-        left: 7%;
+        left: 6%;
         transform: perspective(264px) rotateY(127deg);
         bottom: 18vh;
         height: 50vh;

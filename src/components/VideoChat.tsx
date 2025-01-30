@@ -312,8 +312,8 @@ const VideoChat = () => {
           .getTracks()
           .forEach((track) => track.stop());
       }
-      // navigate("/");
-      // window.location.reload();
+      navigate("/");
+      window.location.reload();
     };
 
     console.log("VideoChat mounted with:", {
