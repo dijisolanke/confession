@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
+import CountdownTimer from "./Timer";
 
 import {
   Root,
@@ -544,6 +545,11 @@ const VideoChat = () => {
 
   return (
     <Root>
+      <CountdownTimer
+        onTimerEnd={() => {
+          navigate("/");
+        }}
+      />
       <img className="bg-img" src="/blk.webp" />
 
       {/* {isLoading && <p>Initializing video chat...</p>} */}

@@ -85,7 +85,7 @@ const Root = styled.div`
     align-self: center;
     @media (max-width: 850px) {
       filter: blur(1px);
-      margin-left: 7%;
+      margin: auto;
       top: 35vh;
     }
   }
