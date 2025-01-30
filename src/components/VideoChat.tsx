@@ -77,7 +77,15 @@ const VideoChat = () => {
   const [shutterIsOpen, setShutterIsOpen] = useState(false);
 
   const [showPlayButton, setShowPlayButton] = useState(true);
-  const [playSound] = useSound(doorSound, { preload: true });
+  const [playSound] = useSound(doorSound, { preload: true, volume: 0.1 });
+  const [hasPlayedSound, setHasPlayedSound] = useState(false);
+
+  const handlePlaySound = () => {
+    if (!hasPlayedSound) {
+      playSound();
+      setHasPlayedSound(true);
+    }
+  };
 
   const handleManualPlay = () => {
     if (remoteVideoRef.current && localVideoRef.current) {
@@ -92,7 +100,7 @@ const VideoChat = () => {
     }
     setShowPlayButton(false);
     setShutterIsOpen(true);
-    playSound();
+    handlePlaySound();
   };
 
   // const handleMediaPermissionDenied = useCallback(() => {
@@ -164,7 +172,6 @@ const VideoChat = () => {
       // Handle ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log("Sending ICE candidate to peer");
           socket.emit("ice-candidate", {
             candidate: event.candidate,
             to: roomId,
@@ -174,14 +181,12 @@ const VideoChat = () => {
 
       // Log connection state changes
       pc.oniceconnectionstatechange = () => {
-        console.log("ICE connection state:", pc.iceConnectionState);
         if (pc.iceConnectionState === "disconnected") {
           console.log("ICE connection disconnected, attempting restart...");
         }
       };
 
       pc.onconnectionstatechange = () => {
-        console.log("Connection state changed:", pc.connectionState);
         dispatch({ type: "SET_CONNECTION_STATE", payload: pc.connectionState });
 
         if (pc.connectionState === "connected") {
@@ -201,11 +206,6 @@ const VideoChat = () => {
 
       // Handle incoming remote tracks
       pc.ontrack = (event) => {
-        console.log("Received remote track:", {
-          kind: event.track.kind,
-          enabled: event.track.enabled,
-          id: event.track.id,
-        });
         if (remoteVideoRef.current && event.streams[0]) {
           remoteVideoRef.current.srcObject = event.streams[0];
           console.log("Set remote video stream:", {
@@ -572,6 +572,11 @@ const VideoChat = () => {
           <ShutterWrapper>
             <Shutter className="top" isOpen={shutterIsOpen} />
           </ShutterWrapper>
+          {showPlayButton && (
+            <Button onClick={handleManualPlay}>
+              <Unlock className="text-white" size={34} />
+            </Button>
+          )}
           {/* <p>{partnerAlias}</p> */}
         </VideoItem>
 
@@ -590,11 +595,6 @@ const VideoChat = () => {
           <ShutterWrapper>
             <Shutter className="bottom" isOpen={shutterIsOpen} />
           </ShutterWrapper>
-          {showPlayButton && (
-            <Button onClick={handleManualPlay}>
-              <Unlock className="text-white" size={34} />
-            </Button>
-          )}
           {/* <p>You</p> */}
         </VideoItem>
       </div>
