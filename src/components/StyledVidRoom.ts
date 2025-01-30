@@ -96,7 +96,7 @@ const VideoItem = styled.div`
   width: unset;
   /* width: 30vw; */
   height: 13vh;
-  /* height: 30vh; */
+  overflow: hidden;
 
   .local-vid {
     /* transform: perspective(1000px) rotateY(57deg); */
