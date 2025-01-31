@@ -144,21 +144,6 @@ const VideoChat = () => {
     setRetryCount(0);
   };
 
-  // const retrySetup = () => {
-  //   if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
-  //     console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
-  //     setIsRetrying(true);
-  //     setRetryCount((prevCount) => prevCount + 1);
-  //     setTimeout(() => {
-  //       socket.emit("requestTurnCredentials");
-  //       setIsRetrying(false);
-  //     }, 2000);
-  //   } else if (!mediaStreamsEstablished && retryCount >= 3) {
-  //     console.log("Max retry attempts reached. Call setup failed.");
-  //     // setMediaError("Failed to establish connection after multiple attempts.");
-  //   }
-  // };
-
   const setupMediaStream = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -240,6 +225,21 @@ const VideoChat = () => {
 
       // Handle incoming remote tracks
       pc.ontrack = (event) => {
+        if (!event.streams[0]) {
+          console.warn("Received track event without stream. Retrying...");
+
+          setTimeout(() => {
+            if (pc.ontrack) {
+              console.log("Retrying ontrack handler...");
+              pc.ontrack(event);
+            } else {
+              console.warn("ontrack is not set, skipping retry.");
+            }
+          }, 500);
+
+          return;
+        }
+
         if (remoteVideoRef.current && event.streams[0]) {
           remoteVideoRef.current.srcObject = event.streams[0];
           console.log("Set remote video stream:", {
@@ -371,7 +371,7 @@ const VideoChat = () => {
         // setIsLoading(true);
 
         const stream = await setupMediaStream();
-        localStreamRef.current = stream; // This line was missing
+        localStreamRef.current = stream;
 
         console.log("Media stream obtained:", {
           videoTracks: stream.getVideoTracks().length,
@@ -397,7 +397,14 @@ const VideoChat = () => {
       offer: RTCSessionDescriptionInit;
       from: string;
     }) => {
-      if (!peerConnectionRef.current) return;
+      if (!peerConnectionRef.current) {
+        console.warn(
+          "Peer connection not yet initialized. Retrying in 500ms..."
+        );
+        setTimeout(() => handleOffer({ offer, from }), 500);
+        return;
+      }
+
       console.log("Received offer from peer:", offer.type);
 
       const pc = peerConnectionRef.current;
