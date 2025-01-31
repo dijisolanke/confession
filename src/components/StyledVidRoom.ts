@@ -49,6 +49,9 @@ const Root = styled.div`
     }
     .bottom-container {
       transform: perspective(1000px) rotateY(-46deg);
+      @media (max-width: 850px) {
+        margin-right: 5%;
+      }
     }
 
     @media (max-width: 850px) {
@@ -58,7 +61,7 @@ const Root = styled.div`
         transform: perspective(264px) rotateY(-307deg);
       }
       .bottom-container {
-        left: 7%;
+        left: 6%;
         transform: perspective(264px) rotateY(127deg);
         bottom: 18vh;
         height: 50vh;
@@ -82,7 +85,7 @@ const Root = styled.div`
     align-self: center;
     @media (max-width: 850px) {
       filter: blur(1px);
-      margin-left: 10%;
+      margin: auto;
       top: 35vh;
     }
   }
@@ -93,21 +96,21 @@ const VideoItem = styled.div`
   width: unset;
   /* width: 30vw; */
   height: 13vh;
-  /* height: 30vh; */
+  overflow: hidden;
 
   .local-vid {
     /* transform: perspective(1000px) rotateY(57deg); */
 
     @media (max-width: 850px) {
       border: solid 2px;
-      transform: scale(3) rotateY(0deg);
+      transform: scale(2) rotateY(0deg);
       height: 90%;
       width: calc(100vw * 1.03);
       margin-top: 1.6vh;
     }
   }
   .local-overlay {
-    /* transform: perspective(1000px) rotateY(57deg); */
+    transform: scale(2);
 
     @media (max-width: 850px) {
       transform: rotateY(0deg);
@@ -117,19 +120,17 @@ const VideoItem = styled.div`
   }
 
   .remote-vid {
-    /* transform: perspective(1000px) rotateY(-56deg);  */
-
     @media (max-width: 850px) {
       position: relative;
       z-index: -1;
-      transform: scale(3) rotateY(0deg);
+      transform: scale(2) rotateY(0deg);
       width: calc(100vw * 1.03);
       height: 90%;
       margin-top: 1.6vh;
     }
   }
   .remote-overlay {
-    /* transform: perspective(1000px) rotateY(-46deg);  */
+    transform: scale(2);
 
     @media (max-width: 850px) {
       transform: rotateY(0deg);
@@ -151,6 +152,9 @@ const ShutterWrapper = styled.div`
 
   .bottom {
     transform-origin: right;
+    @media (max-width: 850px) {
+      transform-origin: left;
+    }
   }
 `;
 
@@ -162,8 +166,7 @@ const Shutter = styled.div<{ isOpen: boolean }>`
   height: 100%;
   background-color: #211206;
   transform-origin: left;
-  transition: transform 2.5s ease-in-out;
-  animation: ${(props) => (props.isOpen ? openShutter : "none")} 0.5s forwards;
+  animation: ${(props) => (props.isOpen ? openShutter : "none")} 1.3s forwards;
 `;
 
 // Styled component for the overlay image with typed props
@@ -194,8 +197,8 @@ const Button = styled.button`
   bottom: 0;
   left: 0;
   margin: auto;
-  width: 3rem; /* 48px */
-  height: 3rem; /* 48px */
+  width: 5rem; /* 48px */
+  height: 5rem; /* 48px */
   background-color: rgba(0, 0, 0, 0.5);
   border-radius: 9999px;
   display: flex;
