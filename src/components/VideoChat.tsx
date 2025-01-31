@@ -74,6 +74,7 @@ const VideoChat = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // const [countdown, setCountdown] = useState(3);
   const [shutterIsOpen, setShutterIsOpen] = useState(false);
 
@@ -112,19 +113,51 @@ const VideoChat = () => {
   // }, [navigate]);
 
   const retrySetup = () => {
-    if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
-      console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
-      setIsRetrying(true);
-      setRetryCount((prevCount) => prevCount + 1);
-      setTimeout(() => {
-        socket.emit("requestTurnCredentials");
-        setIsRetrying(false);
-      }, 2000);
-    } else if (!mediaStreamsEstablished && retryCount >= 3) {
-      console.log("Max retry attempts reached. Call setup failed.");
-      // setMediaError("Failed to establish connection after multiple attempts.");
+    if (retryCount >= 3 || mediaStreamsEstablished || isRetrying) {
+      return; // Stop if max retries reached, streams are established, or retry is in progress
     }
+
+    console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
+    setIsRetrying(true);
+
+    const nextRetryCount = retryCount + 1;
+    setRetryCount(nextRetryCount);
+
+    const retryDelay = Math.pow(2, nextRetryCount) * 1000; // Exponential backoff: 2s, 4s, 8s
+
+    retryTimeoutRef.current = setTimeout(() => {
+      if (!mediaStreamsEstablished) {
+        // Check again before retrying
+        socket.emit("requestTurnCredentials");
+      }
+      setIsRetrying(false);
+    }, retryDelay);
   };
+
+  // Function to cancel retries
+  const cancelRetries = () => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    setIsRetrying(false);
+    setRetryCount(0);
+  };
+
+  // const retrySetup = () => {
+  //   if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
+  //     console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
+  //     setIsRetrying(true);
+  //     setRetryCount((prevCount) => prevCount + 1);
+  //     setTimeout(() => {
+  //       socket.emit("requestTurnCredentials");
+  //       setIsRetrying(false);
+  //     }, 2000);
+  //   } else if (!mediaStreamsEstablished && retryCount >= 3) {
+  //     console.log("Max retry attempts reached. Call setup failed.");
+  //     // setMediaError("Failed to establish connection after multiple attempts.");
+  //   }
+  // };
 
   const setupMediaStream = async () => {
     try {
@@ -302,6 +335,8 @@ const VideoChat = () => {
     let isComponentMounted = true;
 
     const handleLeaveRoom = () => {
+      cancelRetries();
+
       if (peerConnectionRef.current) {
         socket.emit("leaveRoom");
         peerConnectionRef.current.close();
