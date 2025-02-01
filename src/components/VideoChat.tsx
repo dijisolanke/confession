@@ -588,6 +588,7 @@ const VideoChat = () => {
     location.state?.isInitiator,
     navigate,
     partnerAlias,
+    cleanUpCall,
     // handleMediaPermissionDenied,
     // mediaError,
   ]); //might remove partnerAlias
