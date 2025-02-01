@@ -591,7 +591,17 @@ const VideoChat = () => {
     <Root>
       <CountdownTimer
         onTimerEnd={() => {
+          if (localVideoRef.current?.srcObject instanceof MediaStream) {
+            localVideoRef.current.srcObject
+              .getTracks()
+              .forEach((track) => track.stop());
+          }
+          if (peerConnectionRef.current) {
+            peerConnectionRef.current.close();
+          }
+          socket.emit("leaveRoom");
           navigate("/");
+          window.location.reload();
         }}
       />
       <img className="bg-img" src="/blk.webp" />
