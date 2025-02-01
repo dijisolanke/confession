@@ -27,6 +27,8 @@ const Root = styled.div`
 
     @media (max-width: 790px) {
       width: 50vw;
+      right: 23vw;
+      bottom: 10vh;
     }
   }
 
