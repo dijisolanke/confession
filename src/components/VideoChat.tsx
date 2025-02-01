@@ -57,6 +57,7 @@ const VideoChat = () => {
   const { roomId } = useParams<{ roomId: string }>();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isComponentMounted, setIsComponentMounted] = useState(false);
   const [partnerAlias] = useState<string>(
     location.state?.partnerAlias || "Anonymous"
   );
@@ -142,6 +143,92 @@ const VideoChat = () => {
     }
     setIsRetrying(false);
     setRetryCount(0);
+  };
+
+  const handleLeaveRoom = () => {
+    cancelRetries();
+
+    if (peerConnectionRef.current) {
+      socket.emit("leaveRoom");
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+    // Clean up video tracks
+    if (localVideoRef.current?.srcObject instanceof MediaStream) {
+      localVideoRef.current.srcObject
+        .getTracks()
+        .forEach((track) => track.stop());
+    }
+    navigate("/");
+    window.location.reload();
+  };
+
+  const cleanUpCall = () => {
+    setIsComponentMounted(false);
+    console.log("Cleaning up...");
+
+    setRetryCount(0);
+
+    // Clean up local stream
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped track:", track.kind);
+        localStreamRef.current = null;
+      });
+    }
+
+    // Clean up remote stream
+    if (
+      remoteVideoRef.current &&
+      remoteVideoRef.current.srcObject instanceof MediaStream
+    ) {
+      const remoteStream = remoteVideoRef.current.srcObject;
+      remoteStream.getTracks().forEach((track) => {
+        track.stop();
+        console.log("Stopped remote track:", track.kind);
+      });
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    if (peerConnectionRef.current) {
+      // Close all peer connection transceivers
+      peerConnectionRef.current.getTransceivers().forEach((transceiver) => {
+        if (transceiver.stop) {
+          transceiver.stop();
+        }
+      });
+
+      // Close the peer connection
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = null;
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+
+    try {
+      navigator.mediaDevices
+        .getUserMedia({ audio: false, video: false })
+        .catch(() => console.log("Permissions reset"));
+    } catch (err) {
+      console.log("Could not reset permissions");
+    }
+
+    // cleanup();
+    // Remove socket listeners
+    handleLeaveRoom();
+    // socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
+    socket.off("partnerLeft");
+    socket.off("turnCredentials");
+    socket.off("offer");
+    socket.off("answer");
+    socket.off("ice-candidate");
+    socket.disconnect(); // Properly disconnect socket
   };
 
   const setupMediaStream = async () => {
@@ -331,25 +418,7 @@ const VideoChat = () => {
     //   }
     // }
 
-    let isComponentMounted = true;
-
-    const handleLeaveRoom = () => {
-      cancelRetries();
-
-      if (peerConnectionRef.current) {
-        socket.emit("leaveRoom");
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-      // Clean up video tracks
-      if (localVideoRef.current?.srcObject instanceof MediaStream) {
-        localVideoRef.current.srcObject
-          .getTracks()
-          .forEach((track) => track.stop());
-      }
-      navigate("/");
-      window.location.reload();
-    };
+    setIsComponentMounted(true);
 
     console.log("VideoChat mounted with:", {
       roomId,
@@ -512,71 +581,7 @@ const VideoChat = () => {
     // const cleanup = preventDevToolsInspection();
 
     return () => {
-      isComponentMounted = false;
-      console.log("Cleaning up...");
-
-      setRetryCount(0);
-
-      // Clean up local stream
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          track.stop();
-          console.log("Stopped track:", track.kind);
-          localStreamRef.current = null;
-        });
-      }
-
-      // Clean up remote stream
-      if (
-        remoteVideoRef.current &&
-        remoteVideoRef.current.srcObject instanceof MediaStream
-      ) {
-        const remoteStream = remoteVideoRef.current.srcObject;
-        remoteStream.getTracks().forEach((track) => {
-          track.stop();
-          console.log("Stopped remote track:", track.kind);
-        });
-        remoteVideoRef.current.srcObject = null;
-      }
-
-      if (peerConnectionRef.current) {
-        // Close all peer connection transceivers
-        peerConnectionRef.current.getTransceivers().forEach((transceiver) => {
-          if (transceiver.stop) {
-            transceiver.stop();
-          }
-        });
-
-        // Close the peer connection
-        peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
-      }
-
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = null;
-      }
-      if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = null;
-      }
-
-      try {
-        navigator.mediaDevices
-          .getUserMedia({ audio: false, video: false })
-          .catch(() => console.log("Permissions reset"));
-      } catch (err) {
-        console.log("Could not reset permissions");
-      }
-
-      // cleanup();
-      // Remove socket listeners
-      handleLeaveRoom();
-      // socket.off("mediaPermissionDenied", handleMediaPermissionDenied);
-      socket.off("partnerLeft");
-      socket.off("turnCredentials");
-      socket.off("offer");
-      socket.off("answer");
-      socket.off("ice-candidate");
-      socket.disconnect(); // Properly disconnect socket
+      cleanUpCall();
     };
   }, [
     roomId,
@@ -591,7 +596,7 @@ const VideoChat = () => {
     <Root>
       <CountdownTimer
         onTimerEnd={() => {
-          navigate("/");
+          cleanUpCall();
         }}
       />
       <img className="bg-img" src="/blk.webp" />
@@ -650,17 +655,7 @@ const VideoChat = () => {
       </div>
       <button
         onClick={() => {
-          if (localVideoRef.current?.srcObject instanceof MediaStream) {
-            localVideoRef.current.srcObject
-              .getTracks()
-              .forEach((track) => track.stop());
-          }
-          if (peerConnectionRef.current) {
-            peerConnectionRef.current.close();
-          }
-          socket.emit("leaveRoom");
-          navigate("/");
-          window.location.reload();
+          cleanUpCall();
         }}
         className="leave-button"
       >
