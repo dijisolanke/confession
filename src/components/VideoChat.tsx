@@ -74,6 +74,7 @@ const VideoChat = () => {
   const [retryCount, setRetryCount] = useState(0);
   const [mediaStreamsEstablished, setMediaStreamsEstablished] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // const [countdown, setCountdown] = useState(3);
   const [shutterIsOpen, setShutterIsOpen] = useState(false);
 
@@ -112,18 +113,35 @@ const VideoChat = () => {
   // }, [navigate]);
 
   const retrySetup = () => {
-    if (retryCount < 3 && !mediaStreamsEstablished && !isRetrying) {
-      console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
-      setIsRetrying(true);
-      setRetryCount((prevCount) => prevCount + 1);
-      setTimeout(() => {
-        socket.emit("requestTurnCredentials");
-        setIsRetrying(false);
-      }, 2000);
-    } else if (!mediaStreamsEstablished && retryCount >= 3) {
-      console.log("Max retry attempts reached. Call setup failed.");
-      // setMediaError("Failed to establish connection after multiple attempts.");
+    if (retryCount >= 3 || mediaStreamsEstablished || isRetrying) {
+      return; // Stop if max retries reached, streams are established, or retry is in progress
     }
+
+    console.log(`Retrying call setup (Attempt ${retryCount + 1})...`);
+    setIsRetrying(true);
+
+    const nextRetryCount = retryCount + 1;
+    setRetryCount(nextRetryCount);
+
+    const retryDelay = Math.pow(2, nextRetryCount) * 1000; // Exponential backoff: 2s, 4s, 8s
+
+    retryTimeoutRef.current = setTimeout(() => {
+      if (!mediaStreamsEstablished) {
+        // Check again before retrying
+        socket.emit("requestTurnCredentials");
+      }
+      setIsRetrying(false);
+    }, retryDelay);
+  };
+
+  // Function to cancel retries
+  const cancelRetries = () => {
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = null;
+    }
+    setIsRetrying(false);
+    setRetryCount(0);
   };
 
   const setupMediaStream = async () => {
@@ -155,7 +173,13 @@ const VideoChat = () => {
 
   const createPeerConnection = async (iceServers: RTCIceServer[]) => {
     try {
+      if (peerConnectionRef.current) {
+        console.warn("Peer connection already exists. Skipping creation.");
+        return peerConnectionRef.current;
+      }
+
       const pc = new RTCPeerConnection({ iceServers });
+      peerConnectionRef.current = pc;
       console.log("RTCPeerConnection created with ice servers:", iceServers);
 
       // Add local stream tracks to peer connection
@@ -173,10 +197,13 @@ const VideoChat = () => {
       // Handle ICE candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
+          console.log("Sending ICE candidate:", event.candidate);
           socket.emit("ice-candidate", {
             candidate: event.candidate,
             to: roomId,
           });
+        } else {
+          console.log("All ICE candidates have been sent.");
         }
       };
 
@@ -207,7 +234,12 @@ const VideoChat = () => {
 
       // Handle incoming remote tracks
       pc.ontrack = (event) => {
-        if (remoteVideoRef.current && event.streams[0]) {
+        if (!event.streams.length) {
+          console.warn("Received track event without stream. Retrying...");
+          return;
+        }
+
+        if (remoteVideoRef.current) {
           remoteVideoRef.current.srcObject = event.streams[0];
           console.log("Set remote video stream:", {
             streamId: event.streams[0].id,
@@ -302,6 +334,8 @@ const VideoChat = () => {
     let isComponentMounted = true;
 
     const handleLeaveRoom = () => {
+      cancelRetries();
+
       if (peerConnectionRef.current) {
         socket.emit("leaveRoom");
         peerConnectionRef.current.close();
@@ -336,15 +370,14 @@ const VideoChat = () => {
         // setIsLoading(true);
 
         const stream = await setupMediaStream();
-        localStreamRef.current = stream; // This line was missing
+        localStreamRef.current = stream;
 
         console.log("Media stream obtained:", {
           videoTracks: stream.getVideoTracks().length,
           audioTracks: stream.getAudioTracks().length,
         });
 
-        const pc = await createPeerConnection(credentials);
-        peerConnectionRef.current = pc;
+        await createPeerConnection(credentials);
 
         socket.emit("joinRoom", { roomId });
         console.log("Joined room:", roomId);
@@ -362,7 +395,14 @@ const VideoChat = () => {
       offer: RTCSessionDescriptionInit;
       from: string;
     }) => {
-      if (!peerConnectionRef.current) return;
+      if (!peerConnectionRef.current) {
+        console.warn(
+          "Peer connection not yet initialized. Retrying in 500ms..."
+        );
+        setTimeout(() => handleOffer({ offer, from }), 500);
+        return;
+      }
+
       console.log("Received offer from peer:", offer.type);
 
       const pc = peerConnectionRef.current;
@@ -417,11 +457,15 @@ const VideoChat = () => {
     }) => {
       console.log("Received answer from:", from);
       if (peerConnectionRef.current) {
-        await peerConnectionRef.current.setRemoteDescription(
-          new RTCSessionDescription(answer)
-        );
-        console.log("Set remote description from answer");
-        // setIsLoading(false);
+        try {
+          await peerConnectionRef.current.setRemoteDescription(
+            new RTCSessionDescription(answer)
+          );
+          console.log("Set remote description from answer");
+          // setIsLoading(false);
+        } catch (error) {
+          console.error("Error setting remote description", error);
+        }
       }
     };
 
@@ -431,12 +475,12 @@ const VideoChat = () => {
       candidate: RTCIceCandidateInit;
     }) => {
       try {
-        if (!peerConnectionRef.current) return;
-        console.log("Received ICE candidate:", candidate.candidate);
-        await peerConnectionRef.current.addIceCandidate(
-          new RTCIceCandidate(candidate)
-        );
-        console.log("Successfully added ICE candidate");
+        console.log("Received ICE candidate:", candidate);
+        if (peerConnectionRef.current) {
+          await peerConnectionRef.current.addIceCandidate(
+            new RTCIceCandidate(candidate)
+          );
+        }
       } catch (err) {
         console.error("Error adding ICE candidate:", err);
       }
