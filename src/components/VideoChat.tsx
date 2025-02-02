@@ -504,7 +504,23 @@ const VideoChat = () => {
     socket.on("answer", handleAnswer);
     socket.on("ice-candidate", handleIceCandidate);
     socket.on("partnerLeft", handlePartnerLeft);
-    socket.on("roomEnded", handleLeaveRoom);
+    socket.on("roomEnded", ({ permanent }) => {
+      console.log("The castle hall has been sealed...");
+
+      // Clean up the call
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+        peerConnectionRef.current = null;
+      }
+
+      // If permanent is true, this means the room is definitively ended
+      if (permanent) {
+        // Replace the current history entry to prevent back navigation
+        navigate("/", { replace: true });
+      } else {
+        navigate("/");
+      }
+    });
     // socket.on("mediaPermissionDenied", handleMediaPermissionDenied);
 
     setupCall();
