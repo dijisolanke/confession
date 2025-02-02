@@ -504,6 +504,7 @@ const VideoChat = () => {
     socket.on("answer", handleAnswer);
     socket.on("ice-candidate", handleIceCandidate);
     socket.on("partnerLeft", handlePartnerLeft);
+    socket.on("roomEnded", handleLeaveRoom);
     // socket.on("mediaPermissionDenied", handleMediaPermissionDenied);
 
     setupCall();
