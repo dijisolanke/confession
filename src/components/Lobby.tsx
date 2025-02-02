@@ -20,6 +20,8 @@ const Lobby: React.FC = () => {
     } catch (err) {
       console.log("Could not reset permissions");
     }
+    // Request waiting users when component mounts
+    socket.emit("requestWaitingUsers");
     socket.on("waitingUsersUpdate", (users: string[]) => {
       setWaitingUsers(users);
     });
