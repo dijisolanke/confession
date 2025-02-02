@@ -527,7 +527,7 @@ const VideoChat = () => {
         });
       }
 
-      // Clean up remote stream
+      // Clean up remote stream.
       if (
         remoteVideoRef.current &&
         remoteVideoRef.current.srcObject instanceof MediaStream
