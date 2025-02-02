@@ -506,16 +506,11 @@ const VideoChat = () => {
     socket.on("partnerLeft", handlePartnerLeft);
     socket.on("roomEnded", ({ permanent }) => {
       console.log("The castle hall has been sealed...");
-
-      // Clean up the call
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
-        peerConnectionRef.current = null;
       }
-
-      // If permanent is true, this means the room is definitively ended
+      // Replace the current history entry to prevent back navigation
       if (permanent) {
-        // Replace the current history entry to prevent back navigation
         navigate("/", { replace: true });
       } else {
         navigate("/");
