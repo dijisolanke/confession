@@ -186,7 +186,7 @@ const VideoChat = () => {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: false, // Let our processing handle gain
+          autoGainControl: true, // Let our processing handle gain
           sampleRate: 48000, // Higher quality
           channelCount: 1, // Mono for better processing
         },
