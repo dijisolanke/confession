@@ -86,6 +86,7 @@ const VideoChat = () => {
 
   const [voiceProcessingEnabled, setVoiceProcessingEnabled] = useState(true);
   const [pitchLevel, setPitchLevel] = useState(0.75); // 0.5 = deeper, 1.5 = higher
+  const [processingError, setProcessingError] = useState("");
   const {
     initializeAudioWorklet,
     processMediaStream,
@@ -186,8 +187,8 @@ const VideoChat = () => {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true, // Let our processing handle gain
-          sampleRate: 48000, // Higher quality
+          autoGainControl: true, // Keep this enabled for now
+          sampleRate: { ideal: 48000, min: 44100 },
           channelCount: 1, // Mono for better processing
         },
       });
@@ -202,19 +203,40 @@ const VideoChat = () => {
       // Apply voice processing if enabled
       if (voiceProcessingEnabled) {
         try {
+          console.log("Attempting to initialize voice processing...");
+          setProcessingError("");
+
           // Initialize audio worklet
           const workletReady = await initializeAudioWorklet();
           if (workletReady) {
+            console.log("Audio worklet ready, processing stream...");
             // Process the stream
-            finalStream = await processMediaStream(stream);
-            // Set initial pitch shift
-            setPitchShift(pitchLevel);
-            console.log("Voice processing applied successfully");
+            const processedStream = await processMediaStream(stream);
+
+            // Verify the processed stream has audio
+            const processedAudioTracks = processedStream.getAudioTracks();
+            if (processedAudioTracks.length > 0) {
+              finalStream = processedStream;
+              // Set initial pitch shift
+              setPitchShift(pitchLevel);
+              console.log("Voice processing applied successfully");
+            } else {
+              console.warn(
+                "Processed stream has no audio tracks, using original"
+              );
+              setProcessingError(
+                "Processed stream invalid, using original audio"
+              );
+            }
           } else {
-            console.warn("Voice processing failed, using original stream");
+            console.warn(
+              "Voice processing initialization failed, using original stream"
+            );
+            setProcessingError("Voice processing initialization failed");
           }
         } catch (error) {
           console.error("Voice processing error:", error);
+          setProcessingError("error");
           // Continue with original stream if processing fails
         }
       }
@@ -228,6 +250,19 @@ const VideoChat = () => {
           voiceProcessingEnabled
         );
       }
+
+      // Test audio tracks
+      const audioTracks = finalStream.getAudioTracks();
+      console.log(
+        "Final stream audio tracks:",
+        audioTracks.map((track) => ({
+          id: track.id,
+          label: track.label,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+        }))
+      );
 
       return finalStream;
     } catch (error) {
