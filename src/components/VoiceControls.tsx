@@ -1,14 +1,22 @@
 import React from "react";
 import { Mic, MicOff } from "lucide-react";
 
-const VoiceControls = ({
+type VoiceControlsProps = {
+  voiceProcessingEnabled: boolean;
+  setVoiceProcessingEnabled: (enabled: boolean) => void;
+  pitchLevel: number;
+  handlePitchChange: (value: number) => void;
+  disabled?: boolean;
+};
+
+const VoiceControls: React.FC<VoiceControlsProps> = ({
   voiceProcessingEnabled,
   setVoiceProcessingEnabled,
   pitchLevel,
   handlePitchChange,
   disabled = false,
 }) => {
-  const pitchPresets = [
+  const pitchPresets: { label: string; value: number }[] = [
     { label: "Very Deep", value: 0.5 },
     { label: "Deep", value: 0.75 },
     { label: "Normal", value: 1.0 },
@@ -72,7 +80,9 @@ const VoiceControls = ({
               max="1.5"
               step="0.05"
               value={pitchLevel}
-              onChange={(e) => handlePitchChange(parseFloat(e.target.value))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handlePitchChange(parseFloat(e.target.value))
+              }
               disabled={disabled}
               style={{
                 width: "100%",
