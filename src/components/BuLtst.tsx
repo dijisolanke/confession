@@ -2,8 +2,6 @@ import { useEffect, useRef, useState, useReducer } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import CountdownTimer from "./Timer";
-import useVoiceProcessor from "../hooks/useVoiceProcessor";
-import VoiceControls from "./VoiceControls";
 
 import {
   Root,
@@ -84,15 +82,6 @@ const VideoChat = () => {
   const [playSound] = useSound(doorSound, { preload: true, volume: 0.1 });
   const [hasPlayedSound, setHasPlayedSound] = useState(false);
 
-  const [voiceProcessingEnabled, setVoiceProcessingEnabled] = useState(true);
-  const [pitchLevel, setPitchLevel] = useState(0.75); // 0.5 = deeper, 1.5 = higher
-  const {
-    initializeAudioWorklet,
-    processMediaStream,
-    setPitchShift,
-    cleanup: cleanupVoiceProcessor,
-  } = useVoiceProcessor();
-
   const handlePlaySound = () => {
     if (!hasPlayedSound) {
       playSound();
@@ -163,62 +152,23 @@ const VideoChat = () => {
           height: { ideal: 720 },
           facingMode: "user",
         },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 44100,
-        },
+        audio: true,
       });
-
       console.log("Media stream obtained:", {
         videoTracks: stream.getVideoTracks().length,
         audioTracks: stream.getAudioTracks().length,
       });
-
-      let finalStream = stream;
-
-      // Apply voice processing if enabled
-      if (voiceProcessingEnabled) {
-        try {
-          // Initialize audio worklet
-          const workletReady = await initializeAudioWorklet();
-          if (workletReady) {
-            // Process the stream
-            finalStream = await processMediaStream(stream);
-            // Set initial pitch shift
-            setPitchShift(pitchLevel);
-            console.log("Voice processing applied successfully");
-          } else {
-            console.warn("Voice processing failed, using original stream");
-          }
-        } catch (error) {
-          console.error("Voice processing error:", error);
-          // Continue with original stream if processing fails
-        }
-      }
-
-      localStreamRef.current = finalStream;
+      localStreamRef.current = stream;
 
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = finalStream;
-        console.log(
-          "Local video stream set with voice processing:",
-          voiceProcessingEnabled
-        );
+        localVideoRef.current.srcObject = stream;
+        console.log("Local video stream set.");
       }
-
-      return finalStream;
+      return stream;
     } catch (error) {
       console.error("Error accessing media devices:", error);
       throw error;
     }
-  };
-
-  const handlePitchChange = (newPitchLevel: any) => {
-    setPitchLevel(newPitchLevel);
-    setPitchShift(newPitchLevel);
-    console.log("Pitch level changed to:", newPitchLevel);
   };
 
   const createPeerConnection = async (iceServers: RTCIceServer[]) => {
@@ -385,8 +335,6 @@ const VideoChat = () => {
 
     const handleLeaveRoom = () => {
       cancelRetries();
-
-      cleanupVoiceProcessor();
 
       if (peerConnectionRef.current) {
         socket.emit("leaveRoom");
@@ -729,13 +677,6 @@ const VideoChat = () => {
       >
         Leave Chat
       </button>
-      <VoiceControls
-        voiceProcessingEnabled={voiceProcessingEnabled}
-        setVoiceProcessingEnabled={setVoiceProcessingEnabled}
-        pitchLevel={pitchLevel}
-        handlePitchChange={handlePitchChange}
-        disabled={!mediaStreamsEstablished}
-      />
     </Root>
   );
 };
