@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, useReducer } from "react";
+import { useEffect, useRef, useState, useReducer, useCallback } from "react";
 import { useParams, useLocation, useNavigate } from "react-router-dom";
 import io from "socket.io-client";
 import CountdownTimer from "./Timer";
-import useVoiceProcessor from "../hooks/useVoiceProcessor";
+import { useVoiceProcessor } from "../hooks/useVoiceProcessor";
 import VoiceControls from "./VoiceControls";
 
 import {
@@ -100,6 +100,26 @@ const VideoChat = () => {
     }
   };
 
+  const optimizeAudioContext = useCallback(async () => {
+    if (
+      typeof AudioContext !== "undefined" ||
+      typeof AudioContext !== "undefined"
+    ) {
+      try {
+        // Create a temporary context to test capabilities
+        const testContext = new (window.AudioContext || window.AudioContext)();
+        console.log("Audio context sample rate:", testContext.sampleRate);
+        console.log("Audio context state:", testContext.state);
+        await testContext.close();
+        return true;
+      } catch (error) {
+        console.error("Audio context optimization failed:", error);
+        return false;
+      }
+    }
+    return false;
+  }, []);
+
   const handleManualPlay = () => {
     if (remoteVideoRef.current && localVideoRef.current) {
       localVideoRef.current.play().catch((error) => {
@@ -166,8 +186,9 @@ const VideoChat = () => {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 44100,
+          autoGainControl: false, // Let our processing handle gain
+          sampleRate: 48000, // Higher quality
+          channelCount: 1, // Mono for better processing
         },
       });
 
@@ -380,6 +401,8 @@ const VideoChat = () => {
     //     return () => clearInterval(timer);
     //   }
     // }
+
+    optimizeAudioContext();
 
     let isComponentMounted = true;
 

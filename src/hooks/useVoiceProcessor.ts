@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from "react";
 
-// Type declarations for AudioContext and AudioWorkletNode
+// Utility type for nullable values
 type Nullable<T> = T | null;
 
 type UseVoiceProcessorReturn = {
@@ -11,7 +11,7 @@ type UseVoiceProcessorReturn = {
   isProcessing: boolean;
 };
 
-const useVoiceProcessor = (): UseVoiceProcessorReturn => {
+export const useVoiceProcessor = (): UseVoiceProcessorReturn => {
   const audioContextRef = useRef<Nullable<AudioContext>>(null);
   const workletRef = useRef<Nullable<AudioWorkletNode>>(null);
   const sourceRef = useRef<Nullable<MediaStreamAudioSourceNode>>(null);
@@ -23,25 +23,19 @@ const useVoiceProcessor = (): UseVoiceProcessorReturn => {
     try {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext ||
-          (window as any).webkitAudioContext)({
-          sampleRate: 44100,
+          // @ts-ignore
+          window.webkitAudioContext)({
+          sampleRate: 48000,
           latencyHint: "interactive",
         });
       }
 
-      const audioContext = audioContextRef.current;
-
-      if (!audioContext) throw new Error("AudioContext not initialized");
-
-      // Resume context if suspended (required for user interaction)
+      const audioContext = audioContextRef.current!;
       if (audioContext.state === "suspended") {
         await audioContext.resume();
       }
 
-      // Load the audio worklet processor
       await audioContext.audioWorklet.addModule("/pitch-shift-processor.js");
-
-      // Create the worklet node
       workletRef.current = new AudioWorkletNode(
         audioContext,
         "pitch-shift-processor",
@@ -72,17 +66,35 @@ const useVoiceProcessor = (): UseVoiceProcessorReturn => {
       }
 
       try {
-        const audioContext = audioContextRef.current;
+        const audioContext = audioContextRef.current!;
 
         // Create source from media stream
-        sourceRef.current = audioContext!.createMediaStreamSource(mediaStream);
+        sourceRef.current = audioContext.createMediaStreamSource(mediaStream);
+
+        // Add pre-processing: dynamics compressor for better input
+        const preCompressor = audioContext.createDynamicsCompressor();
+        preCompressor.threshold.setValueAtTime(-24, audioContext.currentTime);
+        preCompressor.knee.setValueAtTime(30, audioContext.currentTime);
+        preCompressor.ratio.setValueAtTime(3, audioContext.currentTime);
+        preCompressor.attack.setValueAtTime(0.003, audioContext.currentTime);
+        preCompressor.release.setValueAtTime(0.25, audioContext.currentTime);
+
+        // Add gain control for level management
+        const inputGain = audioContext.createGain();
+        inputGain.gain.setValueAtTime(1.2, audioContext.currentTime);
+
+        const outputGain = audioContext.createGain();
+        outputGain.gain.setValueAtTime(1.8, audioContext.currentTime);
 
         // Create destination for processed audio
-        destinationRef.current = audioContext!.createMediaStreamDestination();
+        destinationRef.current = audioContext.createMediaStreamDestination();
 
-        // Connect: source -> worklet -> destination
-        sourceRef.current.connect(workletRef.current);
-        workletRef.current.connect(destinationRef.current);
+        // Connect: source -> compressor -> gain -> worklet -> output gain -> destination
+        sourceRef.current.connect(preCompressor);
+        preCompressor.connect(inputGain);
+        inputGain.connect(workletRef.current);
+        workletRef.current.connect(outputGain);
+        outputGain.connect(destinationRef.current);
 
         // Create new stream with processed audio and original video
         const processedAudioStream = destinationRef.current.stream;
@@ -96,12 +108,12 @@ const useVoiceProcessor = (): UseVoiceProcessorReturn => {
         ]);
 
         isProcessingRef.current = true;
-        console.log("Media stream processing started");
+        console.log("Enhanced media stream processing started");
 
         return combinedStream;
       } catch (error) {
         console.error("Failed to process media stream:", error);
-        return mediaStream; // Return original stream if processing fails
+        return mediaStream;
       }
     },
     []
@@ -133,7 +145,6 @@ const useVoiceProcessor = (): UseVoiceProcessorReturn => {
     console.log("Voice processor cleaned up");
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return cleanup;
   }, [cleanup]);
@@ -146,5 +157,3 @@ const useVoiceProcessor = (): UseVoiceProcessorReturn => {
     isProcessing: isProcessingRef.current,
   };
 };
-
-export default useVoiceProcessor;
