@@ -787,6 +787,7 @@ const VideoChat = () => {
       >
         Leave Chat
       </button>
+      <div>{processingError}</div>
       <VoiceControls
         voiceProcessingEnabled={voiceProcessingEnabled}
         setVoiceProcessingEnabled={setVoiceProcessingEnabled}
